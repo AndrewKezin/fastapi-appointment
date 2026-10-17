@@ -1,19 +1,22 @@
+from datetime import datetime, timezone
+
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import UUID as SQLAlchemyType, CheckConstraint, String
-from uuid import uuid4, UUID
-# from sqlalchemy import Uuid
-# SQLAlchemyUUID = Uuid
-# from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy import CheckConstraint, Float, String
+from uuid import uuid4
 
 from src.database import Base
+
+def utcnow():
+    return datetime.now(timezone.utc)
 
 class CarModel(Base):
     __tablename__ = "cars"
 
-    id: Mapped[UUID] = mapped_column(
-        SQLAlchemyType,  # тип колонки в БД
-        default=uuid4,
-        primary_key=True
+    # UUID храним как строку (36 символов) — это работает везде, включая SQLite
+    id: Mapped[str] = mapped_column(
+        String(36),
+        default=lambda: str(uuid4()),
+        primary_key=True,
     )
     vin_number: Mapped[str] = mapped_column(String(17), unique=True, nullable=False)
     reg_number: Mapped[str] = mapped_column(String(8))
@@ -21,6 +24,15 @@ class CarModel(Base):
     model: Mapped[str] = mapped_column(String(50))
     engine_volume: Mapped[float | None] = mapped_column(default=None)
     color: Mapped[str | None] = mapped_column(default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        default=utcnow,
+        nullable=False,
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        default=utcnow,
+        onupdate=utcnow,  # при обновлении строки будет вызван utcnow()
+        nullable=False,
+    )
 
     # связь с users "многие ко многим" через таблицу ownerships
     ownerships: Mapped[list["UserCarOwnership"]] = relationship(

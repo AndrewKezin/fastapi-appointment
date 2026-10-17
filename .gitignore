@@ -66,4 +66,4 @@ pnpm-debug.log*
 coverage/
 
 # Локальная база данных
-service.dbgi
+service.db
