@@ -5,14 +5,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.repositories.base_repo import BaseRepository
 from src.models.cars import CarModel
-from src.schemas.cars import CarBaseSchema
+
 
 class CarRepository(BaseRepository):
     def __init__(self, session: AsyncSession):
         super().__init__(session)
 
-    async def create_car(self, data: CarBaseSchema) -> CarModel:
-        car = CarModel(**data.model_dump())
+    async def create_car(self, data: dict) -> CarModel:
+        car = CarModel(**data)
         self.session.add(car)
         await self.session.commit()
         await self.session.refresh(car)

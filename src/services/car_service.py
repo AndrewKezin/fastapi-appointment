@@ -17,7 +17,7 @@ class CarService:
         if non_unique_vin:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Автомобиль с таким vin-номером {data.vin_number} уже зарегистрирован")
 
-        new_car = await self.repo.create_car(data)
+        new_car = await self.repo.create_car(data.model_dump())
 
         return CarResponseSchema.model_validate(new_car)
 

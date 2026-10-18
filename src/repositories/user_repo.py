@@ -4,21 +4,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.repositories.base_repo import BaseRepository
 from src.models.users import UserModel
-from src.schemas.users import UserCreateSchema, UserChangeRoleSchema
+
 
 class UserRepository(BaseRepository):
     def __init__(self, session: AsyncSession):
         super().__init__(session)
 
-    async def create_user(self, data: UserCreateSchema) -> UserModel:
+    async def create_user(self, data: dict) -> UserModel:
         """
         Создаёт пользователя и возвращает ORM-модель.
         Конвертацию в UserResponseSchema делает сервис или API.
         """
         user = UserModel(**data)
         self.session.add(user)
-        await self.session.flush() # чтобы получить id до коммита
         await self.session.commit()
+        await self.session.refresh(user)
         return user
 
     # async def change_role_user(self, user_id: str, data: UserChangeRoleSchema) -> Optional[UserModel]:

@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
-from fastapi import HTTPEXception, HTTPException, status
+from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.appointments import AppointmentModel
@@ -12,7 +12,7 @@ class AppointmentService:
         self.repo = AppointmentRepository(session)
 
     async def create_appointment(self, data: AppointmentBaseSchema) -> AppointmentResponseSchema:
-        appointment = await self.repo.create_appiontment(data)
+        appointment = await self.repo.create_appointment(data.model_dump())
 
         return AppointmentResponseSchema.model_validate(appointment)
 
@@ -20,7 +20,7 @@ class AppointmentService:
         result = await self.repo.get_appointments_by_date(scheduled_at)
 
         if len(result) == 0:
-            raise HTTPException(status_code=404, detail="Записи не найдены")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Записи не найдены")
 
         return [AppointmentResponseSchema.model_validate(appointment) for appointment in result]
 
@@ -28,6 +28,6 @@ class AppointmentService:
         result = await self.repo.get_all(AppointmentModel)
 
         if len(result) == 0:
-                    raise HTTPException(status_code=404, detail="Записи не найдены")
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Записи не найдены")
 
         return [AppointmentResponseSchema.model_validate(appointment) for appointment in result]
