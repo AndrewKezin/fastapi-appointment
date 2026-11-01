@@ -9,4 +9,3 @@ main_router = APIRouter()
 main_router.include_router(car_router)
 main_router.include_router(user_router)
 main_router.include_router(appointment_router)
-

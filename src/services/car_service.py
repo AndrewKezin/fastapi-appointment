@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List
 
 from src.models.cars import CarModel
+from src.models.ownership import UserCarOwnership
 from src.repositories.car_repo import CarRepository
 from src.schemas.cars import CarBaseSchema, CarResponseSchema
 
@@ -15,9 +16,24 @@ class CarService:
         # проверяем уникальность vin
         non_unique_vin = await self.repo.get_car_by_vin(data.vin_number)
         if non_unique_vin:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Автомобиль с таким vin-номером {data.vin_number} уже зарегистрирован")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Автомобиль с таким vin-номером {data.vin_number} уже зарегистрирован",
+            )
 
-        new_car = await self.repo.create_car(data.model_dump())
+        # выделить id пользователя и перевести данные схемы в чистый словарь
+        car_data = data.model_dump()
+        owner_id = car_data.pop("owner_id")  # извлечь owner_id, чтобы его не было
+
+        # отправить данные в репозиторий
+        new_car = await self.repo.create_car(car_data, owner_id)
+
+        # Если репозиторий вернул None, значит запрос упал
+        if not new_car:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Не удалось создать запись в базе данных. Проверьте правильность вводимых данных.",
+            )
 
         return CarResponseSchema.model_validate(new_car)
 
@@ -26,7 +42,7 @@ class CarService:
 
         if len(cars) == 0:
             raise HTTPException(status_code=404, detail="Автомобили не найдены")
-        
+
         return [CarResponseSchema.model_validate(car) for car in cars]
 
     async def get_count_cars(self) -> int:
@@ -34,7 +50,7 @@ class CarService:
 
         if cars_count == 0:
             raise HTTPException(status_code=404, detail="Автомобили не найдены")
-        
+
         return cars_count
 
     async def get_car_by_id(self, car_id: str) -> Optional[CarResponseSchema]:
@@ -53,7 +69,9 @@ class CarService:
 
         return CarResponseSchema.model_validate(car)
 
-    async def get_car_by_reg_number(self, reg_number: str) -> Optional[CarResponseSchema]:
+    async def get_car_by_reg_number(
+        self, reg_number: str
+    ) -> Optional[CarResponseSchema]:
         car = await self.repo.get_car_by_reg_number(reg_number)
 
         if not car:

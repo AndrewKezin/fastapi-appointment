@@ -16,7 +16,10 @@ class UserService:
         # проверяем уникальность email
         non_unique_email = await self.repo.get_user_by_email(data.email)
         if non_unique_email:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Пользователь с таким email {data.email} уже зарегистрирован")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Пользователь с таким email {data.email} уже зарегистрирован",
+            )
 
         # хешируем пароль
         hashed_password = hash_password(data.password)
@@ -30,16 +33,18 @@ class UserService:
         # возвращаем Pydantic-схему (без пароля)
         return UserResponseSchema.model_validate(user)
 
-    async def change_role_user(self, user_id: str, data: UserChangeRoleSchema) -> UserResponseSchema:
+    async def change_role_user(
+        self, user_id: str, data: UserChangeRoleSchema
+    ) -> UserResponseSchema:
         user = await self.repo.change_role_user(user_id, data)
         return UserResponseSchema.model_validate(user)
-    
+
     async def get_user_by_id(self, user_id: str) -> Optional[UserResponseSchema]:
         result = await self.repo.get_user_by_id(user_id)
 
         if not result:
             raise HTTPException(status_code=404, detail="Пользователь не найден")
-    
+
         return UserResponseSchema.model_validate(result)
 
     # async def get_user_by_email(self, email: str) -> Optional[UserResponseSchema]:
@@ -47,11 +52,11 @@ class UserService:
     #     return UserResponseSchema.model_validate(result)
 
     async def get_all_users(self) -> List[UserResponseSchema]:
-        result = await self.repo.get_all(UserModel) # обратиться к базовому репозиторию
+        result = await self.repo.get_all(UserModel)  # обратиться к базовому репозиторию
 
         if len(result) == 0:
             raise HTTPException(status_code=404, detail="Пользователи не найдены")
-        
+
         return [UserResponseSchema.model_validate(user) for user in result]
 
     async def get_count_users(self) -> int:
@@ -59,7 +64,7 @@ class UserService:
 
         if user_count == 0:
             raise HTTPException(status_code=404, detail="Пользователи не найдены")
-        
+
         return user_count
 
     async def get_users_by_last_name(self, last_name: str) -> List[UserResponseSchema]:
@@ -67,7 +72,7 @@ class UserService:
 
         if len(result) == 0:
             raise HTTPException(status_code=404, detail="Пользователь не найден")
-        
+
         return [UserResponseSchema.model_validate(user) for user in result]
 
     async def soft_delete_user(self, user_id: str) -> Optional[UserResponseSchema]:
@@ -77,8 +82,7 @@ class UserService:
 
         if user.is_active == False:
             raise HTTPException(status_code=400, detail="Пользователь уже удалён")
-        
+
         result = await self.repo.soft_delete_user(user_id)
 
         return UserResponseSchema.model_validate(result)
-    

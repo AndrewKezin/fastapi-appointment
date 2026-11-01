@@ -31,24 +31,29 @@ class UserRepository(BaseRepository):
         return await super().get_by_id(UserModel, user_id)
 
     async def get_user_by_email(self, email: str) -> Optional[UserModel]:
-        result = await self.session.execute(select(UserModel).where(UserModel.email == email))  
+        result = await self.session.execute(
+            select(UserModel).where(UserModel.email == email)
+        )
         return result.scalar_one_or_none()
 
     async def get_users_by_last_name(self, last_name: str) -> List[UserModel]:
         # Создаем шаблон вида '%иванов%'
         search_pattern = f"%{last_name}%"
 
-        stmt = select(UserModel).where(UserModel.last_name.ilike(search_pattern)) # ilike - не чувствителен к регистру
+        stmt = select(UserModel).where(
+            UserModel.last_name.ilike(search_pattern)
+        )  # ilike - не чувствителен к регистру
         result = await self.session.execute(stmt)
-        
-        return list(result.scalars().all())
 
+        return list(result.scalars().all())
 
     async def get_count_users(self) -> int:
         return await super().count(UserModel)
 
     async def soft_delete_user(self, user_id: str) -> Optional[UserModel]:
-        result: UserModel = await self.session.execute(select(UserModel).where(UserModel.id == user_id))
+        result: UserModel = await self.session.execute(
+            select(UserModel).where(UserModel.id == user_id)
+        )
         user = result.scalar_one_or_none()
         user.is_active = False
         user.first_name = "DELETED"
@@ -59,7 +64,3 @@ class UserRepository(BaseRepository):
         await self.session.commit()
         await self.session.refresh(user)
         return user
-
-    
-
-    

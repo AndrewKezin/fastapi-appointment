@@ -1,14 +1,14 @@
 from datetime import datetime
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select, and_, delete
 
 from src.models.appointments import AppointmentModel
 from src.repositories.base_repo import BaseRepository
 
 
 class AppointmentRepository(BaseRepository):
-    def __init__(self, session:AsyncSession):
+    def __init__(self, session: AsyncSession):
         super().__init__(session)
 
     async def create_appointment(self, data: dict) -> AppointmentModel:
@@ -19,8 +19,18 @@ class AppointmentRepository(BaseRepository):
 
         return appointment
 
-    async def get_appointments_by_date(self, scheduled_at: datetime) -> List[AppointmentModel]:
-        result = await self.session.execute(select(AppointmentModel).where(AppointmentModel.scheduled_at == scheduled_at))
-        return list(result.scalars().all())
+    async def get_appointments_by_date(
+        self, scheduled_at: datetime
+    ) -> List[AppointmentModel]:
+        start_of_day = datetime.combine(scheduled_at.date(), datetime.min.time())
+        end_of_day = datetime.combine(scheduled_at.date(), datetime.max.time())
 
-    
+        stmt = select(AppointmentModel).where(
+            and_(
+                AppointmentModel.scheduled_at >= start_of_day,
+                AppointmentModel.scheduled_at <= end_of_day,
+            )
+        )
+
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())

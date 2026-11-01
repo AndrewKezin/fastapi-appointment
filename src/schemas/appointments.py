@@ -11,15 +11,21 @@ class AppointmentStatusEnum(Enum):
     COMPLETED = "completed"
     CANCELLED = "cancelled"
 
+
 class AppointmentBaseSchema(BaseModel):
     scheduled_at: datetime = Field(..., description="Дата и время записи")
-    duration_minutes: Optional[int] = Field(None, gte=0, description="Предполагаемая продолжительность работ в минутах")
-    notes: str = Field(..., min_length=5, max_length=500, description="Предполагаемые работы")
-    car_id: str = Field(..., description="Идентификатор автомобиля")
+    duration_minutes: Optional[int] = Field(
+        None, gte=0, description="Предполагаемая продолжительность работ в минутах"
+    )
+    notes: str = Field(
+        ..., min_length=5, max_length=500, description="Предполагаемые работы"
+    )
+    car_id: str = Field(..., description="ID автомобиля из базы данных")
 
 
 class AppointmentChangeStatusSchema(AppointmentBaseSchema):
     status: AppointmentStatusEnum = Field(..., description="Статус записи")
+
 
 class AppointmentResponseSchema(AppointmentChangeStatusSchema):
     id: str
@@ -28,4 +34,3 @@ class AppointmentResponseSchema(AppointmentChangeStatusSchema):
 
     class Config:
         from_attributes = True
-

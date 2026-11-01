@@ -1,13 +1,17 @@
-from datetime import datetime, timezone
+from datetime import datetime
+from typing import List, Optional, TYPE_CHECKING
+from uuid import uuid4
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import CheckConstraint, Float, String
-from uuid import uuid4
 
 from src.database import Base
+from src.models.helpers import utcnow
 
-def utcnow():
-    return datetime.now(timezone.utc)
+# Импорт моделей ТОЛЬКО для проверки типов. В коде этого импорта не происходит, иначе создается циклическая зависимость
+if TYPE_CHECKING:
+    from src.models.ownership import UserCarOwnership, UserModel, AppointmentModel
+
 
 class CarModel(Base):
     __tablename__ = "cars"
@@ -22,8 +26,8 @@ class CarModel(Base):
     reg_number: Mapped[str] = mapped_column(String(8))
     brand: Mapped[str] = mapped_column(String(50))
     model: Mapped[str] = mapped_column(String(50))
-    engine_volume: Mapped[float | None] = mapped_column(default=None)
-    color: Mapped[str | None] = mapped_column(default=None)
+    engine_volume: Mapped[float | None] = mapped_column(Float, default=None)
+    color: Mapped[str | None] = mapped_column(String(30), default=None)
     created_at: Mapped[datetime] = mapped_column(
         default=utcnow,
         nullable=False,
@@ -35,21 +39,37 @@ class CarModel(Base):
     )
 
     # связь с users "многие ко многим" через таблицу ownerships
-    ownerships: Mapped[list["UserCarOwnership"]] = relationship(
+    ownerships: Mapped[List["UserCarOwnership"]] = relationship(
         back_populates="car",
         cascade="all, delete-orphan",
+        lazy="raise"  # Вызовет понятное исключение, если связь не подгружена заранее
     )
 
     # удобный прямой доступ к пользователям
     @property
-    def users(self) -> list["UserModel"]:
+    def users(self) -> List["UserModel"]:
         return [own.user for own in self.ownerships]
 
     # обратная связь к appointments
-    appointments: Mapped[list["AppointmentModel"]] = relationship(back_populates="car", cascade="all, delete-orphan")
+    appointments: Mapped[List["AppointmentModel"]] = relationship(
+        back_populates="car", cascade="all, delete-orphan"
+    )
+
+    @property
+    def owner(self) -> Optional["UserModel"]:
+        # Проходим по записям владения в поисках основной
+        for ownership in self.ownerships:
+            if ownership.is_primary:
+                return ownership.user  # Возвращаем связанный объект UserModel
+
+        # Если основного нет, берем первого владельца из списка
+        if self.ownerships:
+            return self.ownerships[0].user
+
+        return None
 
     # __table_args__ - это кортеж, поэтому в конце кортежа обязательно нужно поставить запятую
     __table_args__ = (
-        CheckConstraint("length(vin_number) = 17"), # для SQLite
+        CheckConstraint("length(vin_number) = 17"),  # для SQLite
         # CheckConstraint("char_length(vin_number) = 17"), # для PostgreSQL
     )
