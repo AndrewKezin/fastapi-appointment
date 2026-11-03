@@ -48,7 +48,7 @@ class UserCarOwnership(Base):
     )  # окончание владения
 
     is_primary: Mapped[bool] = mapped_column(
-        Boolean, default=False, nullable=False
+        Boolean, default=False, server_default="FALSE", nullable=False
     )  # основной владелец
 
     # отношения к основным моделям. В модели UserModel должно быть поле ownerships, а в нем - отношение к полю user в модели UserCarOwnership

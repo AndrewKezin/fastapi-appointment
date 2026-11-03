@@ -2,9 +2,6 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 
 from src.database import engine
-from src.database import Base
-
-
 from src.api import main_router
 
 

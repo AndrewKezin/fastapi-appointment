@@ -1,6 +1,5 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import Depends, status
 
 from src.database import get_session
 from src.schemas.cars import CarBaseSchema

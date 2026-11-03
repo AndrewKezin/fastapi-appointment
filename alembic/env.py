@@ -111,5 +111,4 @@ async def run_migrations_online() -> None:
 if context.is_offline_mode():
     run_migrations_offline()
 else:
-    # Запускаем асинхронную функцию через event loop
     asyncio.run(run_migrations_online())

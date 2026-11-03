@@ -28,9 +28,11 @@ class UserModel(Base):
     last_name: Mapped[str] = mapped_column(String(50), nullable=False)
     phone: Mapped[str] = mapped_column(String(15), nullable=False)
     address: Mapped[str] = mapped_column(String(200), nullable=False)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="TRUE")
     role: Mapped[UserRoleEnum] = mapped_column(
-        SQLEnum(UserRoleEnum), default=UserRoleEnum.USER
+        SQLEnum(UserRoleEnum), 
+        default=UserRoleEnum.USER,
+        server_default="USER"
     )
     created_at: Mapped[datetime] = mapped_column(default=utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(

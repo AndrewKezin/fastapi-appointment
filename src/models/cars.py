@@ -38,7 +38,7 @@ class CarModel(Base):
         nullable=False,
     )
 
-    # связь с users "многие ко многим" через таблицу ownerships
+    # связь с users "многие ко многим" через ассоциативную таблицу ownerships. По факту эта связь выглядит как один car ко многим в асссоциативной таблице user_car_ownership.
     ownerships: Mapped[List["UserCarOwnership"]] = relationship(
         back_populates="car",
         cascade="all, delete-orphan",
