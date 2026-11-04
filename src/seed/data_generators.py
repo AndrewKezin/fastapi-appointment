@@ -1,20 +1,54 @@
 import random
 import string
 
-from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database import get_session
-from src.schemas.users import UserCreateSchema
-from src.services.user_service import UserService
+# car generators
+def generate_vin() -> str:
+    vin_alphabet = "0123456789ABCDEFGHJKLMNPRSTUVWXYZ"
+    return "".join([random.choice(vin_alphabet) for _ in range(17)])
 
+def generate_reg_number() -> str:
+    reg_number_alphabet = "АВКМНОРСТУХ"
+    return f"{random.choice(reg_number_alphabet)}{random.randint(100, 999)}{"".join(random.choices(reg_number_alphabet, k=2))}{random.randint(10, 999)}"
+
+def generate_brand_model() -> dict:
+    brands = ["Audi", "VW", "Skoda", "Seat"]
+
+    au = ["A1", "A3", "A4", "A5", "A6", "A7", "A8", "Q7", "Q8"]
+    vw = ["Golf", "Passat", "Tiguan", "Touareg", "Transporter", "Talagon"]
+    sk = ["Octavia", "Rapid", "Superb", "Yeti", "Kodiaq", "Karoq"]
+    seat = ["Altea", "Ibiza", "Leon"]
+
+    brand = random.choice(brands)
+    model = None
+
+    if brand == "Audi":
+        model = random.choice(au)
+    elif brand == "VW":
+        model = random.choice(vw)
+    elif brand == "Skoda":
+        model = random.choice(sk)
+    elif brand == "Seat":
+        model = random.choice(seat)
+
+    return {"brand": brand, "model": model}
+
+def generate_engine_volume() -> float | None:
+    return round(random.uniform(1.0, 3.0), 1)
+
+def generate_color() -> str | None:
+    colors = ["Белый", "Черный", "Серый", "Красный", "Синий", "Зеленый", "Желтый", None]
+    return random.choice(colors)
+
+
+# user generators
 alphabet = string.ascii_letters + string.digits
 
 def generate_email():
     return f"{"".join(random.choices(alphabet, k=(random.randint(5, 10))))}@{random.choice(["mail.ru", "gmail.com", "yandex.ru"])}"
 
-def generate_password():
-    return "".join(random.choices(alphabet, k=(random.randint(5, 10))))
+# def generate_password():
+#     return "".join(random.choices(alphabet, k=(random.randint(5, 10))))
 
 def generate_name():
     male_names = ["Александр", "Алексей", "Иван", "Михаил", "Максим", "Никита", "Николай", "Павел", "Сергей", "Степан", "Федор", "Юрий"]
@@ -48,16 +82,32 @@ def generate_address():
 
     return f"{random.choice(cities)}, {random.choice(streets)}, д.{random.randint(1, 100)}, кв.{random.randint(1, 300)}"
 
-async def create_test_users(session: AsyncSession = Depends(get_session)):
-    service = UserService(session)
 
-    for _ in range(35):
-        await service.create_user(UserCreateSchema(
-            email=generate_email(),
-            password=generate_password(),
-            name=generate_name()["name"],
-            patronymic=generate_name()["patronymic"],
-            last_name=generate_name()["last_name"],
-            phone=generate_phone(),
-            address=generate_address()
-        ))
+def create_test_user() -> dict:
+    user_fio = generate_name()
+
+    return {
+        "email": generate_email(),
+        "hashed_password": "11111",
+        "first_name": user_fio["name"],
+        "middle_name": user_fio["patronymic"],
+        "last_name": user_fio["last_name"],
+        "phone": generate_phone(),
+        "address": generate_address()
+    }
+
+
+def create_test_car() -> dict:
+    return {
+        "vin_number": generate_vin(),
+        "reg_number": generate_reg_number(),
+        "brand": generate_brand_model()["brand"],
+        "model": generate_brand_model()["model"],
+        "engine_volume": generate_engine_volume(),
+        "color": generate_color(),
+    }
+
+
+
+# if __name__ == "__main__":
+#     print(create_test_car())
