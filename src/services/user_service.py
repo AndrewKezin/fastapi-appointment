@@ -5,6 +5,7 @@ from typing import List, Optional
 from src.models.users import UserModel
 from src.repositories.user_repo import UserRepository
 from src.schemas.users import UserCreateSchema, UserChangeRoleSchema, UserResponseSchema, UserWithCarsResponseSchema
+from src.schemas.cars import CarByUserResponseSchema
 from src.auth.security import hash_password
 
 
@@ -43,9 +44,9 @@ class UserService:
         result = await self.repo.get_user_by_id_with_cars(user_id)
 
         if not result:
-            raise HTTPException(status_code=404, detail="Пользователь не найден")
+            raise HTTPException(status_code=404, detail="Пользователь не найден") 
 
-        return UserResponseSchema.model_validate(result)
+        return UserWithCarsResponseSchema.model_validate(result)
 
     # async def get_user_by_email(self, email: str) -> Optional[UserResponseSchema]:
     #     result = await self.repo.get_user_by_email(email)
@@ -86,3 +87,7 @@ class UserService:
         result = await self.repo.soft_delete_user(user_id)
 
         return UserResponseSchema.model_validate(result)
+
+
+UserWithCarsResponseSchema.model_rebuild()
+
