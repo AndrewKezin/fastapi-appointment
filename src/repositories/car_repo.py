@@ -1,8 +1,8 @@
-from typing import Optional
+from typing import List, Optional
 
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from src.models.ownership import UserCarOwnership
 from src.repositories.base_repo import BaseRepository
@@ -32,12 +32,34 @@ class CarRepository(BaseRepository):
 
             # Фиксируем обе записи одной транзакцией
             await self.session.commit()
-            await self.session.refresh(car)
-            return car
+
+            query = select(CarModel).options(
+                selectinload(CarModel.ownerships)
+                .selectinload(UserCarOwnership.user)
+            )
+
+            result = await self.session.execute(query)
+            return result.scalar_one()
+        
 
         except Exception:
             await self.session.rollback()
             return None  # Сигнализируем сервису, что транзакция упала
+
+    async def get_all_cars_with_owners(self) -> List[CarModel]:
+        # 1. Загружаем CarModel
+        # 2. Через selectinload подгружаем список CarModel.ownerships
+        # 3. Через chained selectinload подгружаем UserCarOwnership.user для каждой записи
+        query = (
+            select(CarModel)
+            .options(
+                selectinload(CarModel.ownerships)
+                .selectinload(UserCarOwnership.user)
+        )
+    )
+        result = await self.session.execute(query)
+        # scalars().all() вернет чистый список объектов CarModel с уже заполненными связями в памяти
+        return list(result.scalars().all())
 
     async def get_car_by_vin(self, vin_number: str) -> Optional[CarModel]:
         result = await self.session.execute(

@@ -1,8 +1,13 @@
-from typing import Optional
+from __future__ import annotations
+
+from typing import List, Optional, TYPE_CHECKING
 from datetime import datetime
 
 from pydantic import BaseModel, EmailStr, Field
 from enum import Enum
+
+if TYPE_CHECKING:
+    from src.schemas.cars import CarByUserResponseSchema
 
 
 class UserRoleEnum(Enum):
@@ -49,6 +54,13 @@ class UserMinResponseSchema(BaseModel):
     email: EmailStr
     first_name: str
     last_name: str
+
+    model_config = {
+        "from_attributes": True  # Чтобы схема умела читать объекты SQLAlchemy
+    }
+
+class UserWithCarsResponseSchema(UserResponseSchema):
+    cars: List["CarByUserResponseSchema"] = None
 
     model_config = {
         "from_attributes": True  # Чтобы схема умела читать объекты SQLAlchemy

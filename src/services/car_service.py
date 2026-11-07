@@ -4,15 +4,18 @@ from typing import Optional, List
 
 from src.models.cars import CarModel
 from src.models.ownership import UserCarOwnership
+
 from src.repositories.car_repo import CarRepository
-from src.schemas.cars import CarBaseSchema, CarResponseSchema
+
+from src.schemas.cars import CarBaseSchema, CarCreateSchema, CarResponseSchema
+from src.schemas.users import UserMinResponseSchema
 
 
 class CarService:
     def __init__(self, session: AsyncSession):
         self.repo = CarRepository(session)
 
-    async def add_car(self, data: CarBaseSchema) -> CarResponseSchema:
+    async def add_new_car_with_owner(self, data: CarCreateSchema) -> CarResponseSchema:
         # проверяем уникальность vin
         non_unique_vin = await self.repo.get_car_by_vin(data.vin_number)
         if non_unique_vin:
@@ -23,7 +26,7 @@ class CarService:
 
         # выделить id пользователя и перевести данные схемы в чистый словарь
         car_data = data.model_dump()
-        owner_id = car_data.pop("owner_id")  # извлечь owner_id, чтобы его не было
+        owner_id = car_data.pop("owner_id")  # извлечь owner_id, т.к. в таблице cars его нет
 
         # отправить данные в репозиторий
         new_car = await self.repo.create_car(car_data, owner_id)
@@ -37,8 +40,8 @@ class CarService:
 
         return CarResponseSchema.model_validate(new_car)
 
-    async def get_all_cars(self) -> List[CarResponseSchema]:
-        cars = await self.repo.get_all(CarModel)
+    async def get_all_cars_with_owners(self) -> List[CarResponseSchema]:
+        cars = await self.repo.get_all_cars_with_owners()
 
         if len(cars) == 0:
             raise HTTPException(status_code=404, detail="Автомобили не найдены")
@@ -78,3 +81,5 @@ class CarService:
             raise HTTPException(status_code=404, detail="Автомобиль не найден")
 
         return CarResponseSchema.model_validate(car)
+
+CarResponseSchema.model_rebuild()
