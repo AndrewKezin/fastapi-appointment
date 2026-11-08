@@ -33,6 +33,9 @@ def generate_brand_model() -> dict:
 
     return {"brand": brand, "model": model}
 
+def generate_year() -> int:
+    return random.randint(2000, 2025)
+
 def generate_engine_volume() -> float | None:
     return round(random.uniform(1.0, 3.0), 1)
 
@@ -103,6 +106,7 @@ def create_test_car() -> dict:
         "reg_number": generate_reg_number(),
         "brand": generate_brand_model()["brand"],
         "model": generate_brand_model()["model"],
+        "year": generate_year(),
         "engine_volume": generate_engine_volume(),
         "color": generate_color(),
     }

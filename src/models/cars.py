@@ -3,7 +3,7 @@ from typing import List, Optional, TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import CheckConstraint, Float, String
+from sqlalchemy import CheckConstraint, Float, String, Integer
 
 from src.database import Base
 from src.models.helpers import utcnow
@@ -26,6 +26,7 @@ class CarModel(Base):
     reg_number: Mapped[str] = mapped_column(String(8))
     brand: Mapped[str] = mapped_column(String(50))
     model: Mapped[str] = mapped_column(String(50))
+    year: Mapped[int | None] = mapped_column(Integer, default=None)
     engine_volume: Mapped[float | None] = mapped_column(Float, default=None)
     color: Mapped[str | None] = mapped_column(String(30), default=None)
     created_at: Mapped[datetime] = mapped_column(
@@ -45,15 +46,18 @@ class CarModel(Base):
         lazy="raise"  # Вызовет понятное исключение, если связь не подгружена заранее
     )
 
+    # обратная связь к appointments
+    appointments: Mapped[List["AppointmentModel"]] = relationship(
+        back_populates="car", 
+        cascade="all, delete-orphan",
+        lazy="raise"
+    )
+
     # удобный прямой доступ к пользователям
     @property
     def users(self) -> List["UserModel"]:
         return [own.user for own in self.ownerships]
 
-    # обратная связь к appointments
-    appointments: Mapped[List["AppointmentModel"]] = relationship(
-        back_populates="car", cascade="all, delete-orphan"
-    )
 
     @property
     def owner(self) -> Optional["UserModel"]:

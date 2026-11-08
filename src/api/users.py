@@ -30,7 +30,7 @@ async def get_all_users(session: AsyncSession = Depends(get_session)):
 async def get_count_users(session: AsyncSession = Depends(get_session)):
     service = UserService(session)
     count = await service.get_count_users()
-    return {"data": count}
+    return {"count": count}
 
 
 @router.get("/{user_id}")

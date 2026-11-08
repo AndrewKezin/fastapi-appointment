@@ -30,20 +30,26 @@ class CarRepository(BaseRepository):
             )
             self.session.add(ownership)
 
+            generated_car_id = car.id
+
             # Фиксируем обе записи одной транзакцией
             await self.session.commit()
 
-            query = select(CarModel).options(
-                selectinload(CarModel.ownerships)
-                .selectinload(UserCarOwnership.user)
+            query = (
+                select(CarModel)
+                .where(CarModel.id == generated_car_id)
+                .options(
+                    selectinload(CarModel.ownerships)
+                    .selectinload(UserCarOwnership.user)
+                )
             )
-
             result = await self.session.execute(query)
-            return result.scalar_one()
-        
 
-        except Exception:
+            return result.scalar_one_or_none()
+
+        except Exception as e:
             await self.session.rollback()
+            print("Error:", e)
             return None  # Сигнализируем сервису, что транзакция упала
 
     async def get_all_cars_with_owners(self) -> List[CarModel]:
@@ -55,33 +61,49 @@ class CarRepository(BaseRepository):
             .options(
                 selectinload(CarModel.ownerships)
                 .selectinload(UserCarOwnership.user)
+            )
         )
-    )
+
         result = await self.session.execute(query)
         # scalars().all() вернет чистый список объектов CarModel с уже заполненными связями в памяти
         return list(result.scalars().all())
 
-    async def get_car_by_vin(self, vin_number: str) -> Optional[CarModel]:
-        result = await self.session.execute(
-            select(CarModel).where(
-                func.lower(CarModel.vin_number) == vin_number.lower()
-            )
-        )
-        return result.scalar_one_or_none()
-
-    async def get_car_by_reg_number(self, reg_number: str) -> Optional[CarModel]:
-        result = await self.session.execute(
-            select(CarModel).where(
-                func.lower(CarModel.reg_number) == reg_number.lower()
-            )
-        )
-        return result.scalar_one_or_none()
-
-    async def get_car_by_id(self, car_id: str) -> Optional[CarModel]:
+    async def get_car_by_id_with_owners(self, car_id: str) -> Optional[CarModel]:
         stmt = (
-            select(CarModel).where(CarModel.id == car_id)
-            # Загружаем связи сразу в одном запросе
-            .options(joinedload(CarModel.ownerships).joinedload(UserCarOwnership.user))
+            select(CarModel)
+                .where(CarModel.id == car_id)
+                .options(
+                    selectinload(CarModel.ownerships)
+                    .selectinload(UserCarOwnership.user))
         )
         result = await self.session.execute(stmt)
+        
         return result.scalar_one_or_none()
+
+    async def get_car_by_vin_with_owners(self, vin_number: str) -> Optional[CarModel]:
+        stmt = (
+            select(CarModel)
+                .where(CarModel.vin_number == vin_number.upper())
+                .options(
+                    selectinload(CarModel.ownerships)
+                    .selctinload(UserCarOwnership.user)
+                )
+        )
+        result = await self.session.execute(stmt)
+        
+        return result.scalar_one_or_none()
+
+    async def get_car_by_reg_number_with_owners(self, reg_number: str) -> Optional[CarModel]:
+        stmt = (
+            select(CarModel)
+                .where(CarModel.reg_number == reg_number.upper())
+                .options(
+                    selectinload(CarModel.ownerships)
+                    .selectinload(UserCarOwnership.user)
+                )
+        )
+
+        result = await self.session.execute(stmt)
+
+        return result.scalar_one_or_none()
+

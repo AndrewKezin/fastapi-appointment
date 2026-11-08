@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Optional, TYPE_CHECKING
 
@@ -17,20 +18,50 @@ class CarBaseSchema(BaseModel):
         description="Уникальный VIN-номер автомобиля (17 символов)",
     )
     reg_number: str = Field(
-        ..., min_lenght=6, max_length=10, description="Регистрационный номер (госномер)"
+        ..., min_length=6, max_length=10, description="Регистрационный номер (госномер)"
     )
-    brand: str = Field(..., min_length=2, max_lenght=50, description="Марка автомобиля")
+    brand: str = Field(..., min_length=2, max_length=50, description="Марка автомобиля")
     model: str = Field(..., max_length=50, description="Модель автомобиля")
+    year: Optional[int] = Field(None, ge=1950, le=datetime.now().year + 1, description="Год выпуска автомобиля")
     engine_volume: Optional[float] = Field(
         None, gt=0.0, lt=8.0, description="Объем двигателя в литрах (например, 2.0)"
     )
     color: Optional[str] = Field(None, max_length=30, description="Цвет автомобиля")
 
-    # Валидатор для автоматического перевода VIN в верхний регистр (опционально, но полезно)
+    # Валидатор для автоматического перевода VIN в верхний регистр
     @field_validator("vin_number")
     @classmethod
     def uppercase_vin(cls, value: str) -> str:
         return value.upper()
+
+    # Валидатор для автоматического перевода госномера в верхний регистр и перевода случайных латинских букв в кириллицу
+    @field_validator("reg_number")
+    @classmethod
+    def validate_and_fix_reg_number(cls, value: str) -> str:
+        value = value.upper()
+
+        translit_map = {
+            'A': 'А', 'B': 'В', 'E': 'Е', 'K': 'К', 
+            'M': 'М', 'H': 'Н', 'O': 'О', 'P': 'Р', 
+            'C': 'С', 'T': 'Т', 'Y': 'У', 'X': 'Х'
+        }
+
+        fixed_chars = []
+
+        for char in value:
+            if char in translit_map:
+                fixed_chars.append(translit_map[char])
+            else:
+                fixed_chars.append(char)
+
+        fixed_reg_number = "".join(fixed_chars)
+
+        if not re.match(r"^[АВЕКМНОРСТУХ0-9]+$", fixed_reg_number):
+            raise ValueError(
+                "Госномер содержит недопустимые символы. Разрешены только цифры и буквы: А, В, Е, К, М, Н, О, Р, С, Т, У, Х."
+            )
+        return fixed_reg_number
+
 
     model_config = {
         "from_attributes": True  # Чтобы схема умела читать объекты SQLAlchemy

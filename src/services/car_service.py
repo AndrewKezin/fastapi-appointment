@@ -56,26 +56,26 @@ class CarService:
 
         return cars_count
 
-    async def get_car_by_id(self, car_id: str) -> Optional[CarResponseSchema]:
-        car = await self.repo.get_by_id(CarModel, car_id)
+    async def get_car_by_id_with_owners(self, car_id: str) -> Optional[CarResponseSchema]:
+        car = await self.repo.get_car_by_id_with_owners(car_id)
 
         if not car:
             raise HTTPException(status_code=404, detail="Автомобиль не найден")
 
         return CarResponseSchema.model_validate(car)
 
-    async def get_car_by_vin(self, vin_number: str) -> Optional[CarResponseSchema]:
-        car = await self.repo.get_car_by_vin(vin_number)
+    async def get_car_by_vin_with_owners(self, vin_number: str) -> Optional[CarResponseSchema]:
+        car = await self.repo.get_car_by_vin_with_owners(vin_number)
 
         if not car:
             raise HTTPException(status_code=404, detail="Автомобиль не найден")
 
         return CarResponseSchema.model_validate(car)
 
-    async def get_car_by_reg_number(
+    async def get_car_by_reg_number_with_owners(
         self, reg_number: str
     ) -> Optional[CarResponseSchema]:
-        car = await self.repo.get_car_by_reg_number(reg_number)
+        car = await self.repo.get_car_by_reg_number_with_owners(reg_number)
 
         if not car:
             raise HTTPException(status_code=404, detail="Автомобиль не найден")
