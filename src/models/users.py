@@ -9,11 +9,11 @@ from src.database import Base
 from src.schemas.users import UserRoleEnum
 from src.models.helpers import utcnow
 
-
 # Импорт моделей ТОЛЬКО для проверки типов. В коде этого импорта не происходит, иначе создается циклическая зависимость
 if TYPE_CHECKING:
     from src.models.cars import CarModel
     from src.models.ownership import UserCarOwnership
+
 
 class UserModel(Base):
     __tablename__ = "users"
@@ -28,11 +28,11 @@ class UserModel(Base):
     last_name: Mapped[str] = mapped_column(String(50), nullable=False)
     phone: Mapped[str] = mapped_column(String(15), nullable=False)
     address: Mapped[str] = mapped_column(String(200), nullable=False)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="TRUE")
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="TRUE"
+    )
     role: Mapped[UserRoleEnum] = mapped_column(
-        SQLEnum(UserRoleEnum), 
-        default=UserRoleEnum.USER,
-        server_default="USER"
+        SQLEnum(UserRoleEnum), default=UserRoleEnum.USER, server_default="USER"
     )
     created_at: Mapped[datetime] = mapped_column(default=utcnow, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
@@ -43,7 +43,7 @@ class UserModel(Base):
     ownerships: Mapped[List["UserCarOwnership"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
-        lazy="raise"  # Вызовет понятное исключение, если связь не подгружена заранее
+        lazy="raise",  # Вызовет понятное исключение, если связь не подгружена заранее
     )
 
     # Удобный «прямой» список машин через связь

@@ -9,7 +9,6 @@ from src.database import Base
 from src.schemas.appointments import AppointmentStatusEnum
 from src.models.helpers import utcnow
 
-
 # Импорт моделей ТОЛЬКО для проверки типов. В коде этого импорта не происходит, иначе создается циклическая зависимость
 if TYPE_CHECKING:
     from src.models.cars import CarModel
@@ -40,5 +39,5 @@ class AppointmentModel(Base):
     # связь с машиной. Это ссылка только для ORM. В БД она никак не отражается, там только внешние ключи.
     car: Mapped["CarModel"] = relationship(
         back_populates="appointments",
-        lazy="raise"  # Вызовет понятное исключение, если связь не подгружена заранее
+        lazy="raise",  # Вызовет понятное исключение, если связь не подгружена заранее
     )

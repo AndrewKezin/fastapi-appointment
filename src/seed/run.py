@@ -18,7 +18,7 @@ async def seed_database():
 
     # Открываем сессию вручную через фабрику сессий, так как Depends вне эндпоинтов FastAPI не работает
     async with new_session() as session:
-        async with session.begin(): # Автоматически сделает commit() в конце, если не будет ошибок
+        async with session.begin():  # Автоматически сделает commit() в конце, если не будет ошибок
             # ОЧИСТКА: Удаляем старые связи, чтобы избежать UNIQUE constraint failed
             await session.execute(delete(UserCarOwnership))
             await session.execute(delete(UserModel))
@@ -50,11 +50,9 @@ async def seed_database():
             # генерация связей
             for user in users:
                 random_car = cars.pop()
-                
+
                 ownership = UserCarOwnership(
-                    user_id = user.id,
-                    car_id = random_car.id,
-                    is_primary = True
+                    user_id=user.id, car_id=random_car.id, is_primary=True
                 )
 
                 session.add(ownership)
@@ -65,6 +63,3 @@ async def seed_database():
 if __name__ == "__main__":
     # Запускаем асинхронную функцию
     asyncio.run(seed_database())
-
-    
-        

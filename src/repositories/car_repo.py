@@ -1,8 +1,8 @@
 from typing import List, Optional
 
-from sqlalchemy import select, func
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import selectinload, contains_eager
 
 from src.models.ownership import UserCarOwnership
 from src.repositories.base_repo import BaseRepository
@@ -39,8 +39,9 @@ class CarRepository(BaseRepository):
                 select(CarModel)
                 .where(CarModel.id == generated_car_id)
                 .options(
-                    selectinload(CarModel.ownerships)
-                    .selectinload(UserCarOwnership.user)
+                    selectinload(CarModel.ownerships).selectinload(
+                        UserCarOwnership.user
+                    )
                 )
             )
             result = await self.session.execute(query)
@@ -59,9 +60,9 @@ class CarRepository(BaseRepository):
         query = (
             select(CarModel)
             .options(
-                selectinload(CarModel.ownerships)
-                .selectinload(UserCarOwnership.user)
+                selectinload(CarModel.ownerships).selectinload(UserCarOwnership.user)
             )
+            .order_by(desc(CarModel.created_at))
         )
 
         result = await self.session.execute(query)
@@ -71,39 +72,52 @@ class CarRepository(BaseRepository):
     async def get_car_by_id_with_owners(self, car_id: str) -> Optional[CarModel]:
         stmt = (
             select(CarModel)
-                .where(CarModel.id == car_id)
-                .options(
-                    selectinload(CarModel.ownerships)
-                    .selectinload(UserCarOwnership.user))
+            .join(CarModel.ownerships)
+            .where(CarModel.id == car_id)
+            .order_by(desc(UserCarOwnership.ownership_start))
+            .options(
+                contains_eager(CarModel.ownerships).selectinload(UserCarOwnership.user)
+            )
         )
         result = await self.session.execute(stmt)
-        
+
+        return result.unique().scalar_one_or_none()
+
+    # для проверки vin перед добавлением авто
+    async def get_car_by_vin(self, vin_number: str) -> Optional[CarModel]:
+        stmt = select(CarModel).where(CarModel.vin_number == vin_number.upper())
+        result = await self.session.execute(stmt)
+
         return result.scalar_one_or_none()
 
+    # для поиска авто по vin с выдачей информации клиенту
     async def get_car_by_vin_with_owners(self, vin_number: str) -> Optional[CarModel]:
         stmt = (
             select(CarModel)
-                .where(CarModel.vin_number == vin_number.upper())
-                .options(
-                    selectinload(CarModel.ownerships)
-                    .selctinload(UserCarOwnership.user)
-                )
+            .join(CarModel.ownerships)
+            .where(CarModel.vin_number == vin_number.upper())
+            .order_by(desc(UserCarOwnership.ownership_start))
+            .options(
+                contains_eager(CarModel.ownerships).selectinload(UserCarOwnership.user)
+            )
         )
         result = await self.session.execute(stmt)
-        
-        return result.scalar_one_or_none()
 
-    async def get_car_by_reg_number_with_owners(self, reg_number: str) -> Optional[CarModel]:
+        return result.unique().scalar_one_or_none()
+
+    async def get_car_by_reg_number_with_owners(
+        self, reg_number: str
+    ) -> Optional[CarModel]:
         stmt = (
             select(CarModel)
-                .where(CarModel.reg_number == reg_number.upper())
-                .options(
-                    selectinload(CarModel.ownerships)
-                    .selectinload(UserCarOwnership.user)
-                )
+            .join(CarModel.ownerships)
+            .where(CarModel.reg_number == reg_number.upper())
+            .order_by(desc(UserCarOwnership.ownership_start))
+            .options(
+                contains_eager(CarModel.ownerships).selectinload(UserCarOwnership.user)
+            )
         )
 
         result = await self.session.execute(stmt)
 
-        return result.scalar_one_or_none()
-
+        return result.unique().scalar_one_or_none()

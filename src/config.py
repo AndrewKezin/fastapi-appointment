@@ -1,6 +1,5 @@
 from pydantic_settings import BaseSettings
-from pathlib import Path # работа с путями в ОС
-
+from pathlib import Path  # работа с путями в ОС
 
 # BASE_DIR = Path(__file__).parent # родительская директория от текущего раположения файла
 

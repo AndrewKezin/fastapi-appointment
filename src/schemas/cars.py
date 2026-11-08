@@ -22,7 +22,9 @@ class CarBaseSchema(BaseModel):
     )
     brand: str = Field(..., min_length=2, max_length=50, description="Марка автомобиля")
     model: str = Field(..., max_length=50, description="Модель автомобиля")
-    year: Optional[int] = Field(None, ge=1950, le=datetime.now().year + 1, description="Год выпуска автомобиля")
+    year: Optional[int] = Field(
+        None, ge=1950, le=datetime.now().year + 1, description="Год выпуска автомобиля"
+    )
     engine_volume: Optional[float] = Field(
         None, gt=0.0, lt=8.0, description="Объем двигателя в литрах (например, 2.0)"
     )
@@ -41,9 +43,18 @@ class CarBaseSchema(BaseModel):
         value = value.upper()
 
         translit_map = {
-            'A': 'А', 'B': 'В', 'E': 'Е', 'K': 'К', 
-            'M': 'М', 'H': 'Н', 'O': 'О', 'P': 'Р', 
-            'C': 'С', 'T': 'Т', 'Y': 'У', 'X': 'Х'
+            "A": "А",
+            "B": "В",
+            "E": "Е",
+            "K": "К",
+            "M": "М",
+            "H": "Н",
+            "O": "О",
+            "P": "Р",
+            "C": "С",
+            "T": "Т",
+            "Y": "У",
+            "X": "Х",
         }
 
         fixed_chars = []
@@ -62,12 +73,10 @@ class CarBaseSchema(BaseModel):
             )
         return fixed_reg_number
 
-
     model_config = {
         "from_attributes": True  # Чтобы схема умела читать объекты SQLAlchemy
     }
 
-   
 
 class CarCreateSchema(CarBaseSchema):
     # Поле для автоматической привязки владельца при создании машины
@@ -76,24 +85,25 @@ class CarCreateSchema(CarBaseSchema):
     )
 
     model_config = {
-            "from_attributes": True,
-            "json_schema_extra": {
-                "example": {
-                    "vin_number": "WAUZZZ4M901234567",
-                    "reg_number": "А000АА00",
-                    "brand": "AUDI",
-                    "model": "Q7",
-                    "engine_volume": 3.0,
-                    "color": "Красный",
-                    "owner_id": "47f43c2d-a4d1-436d-b52b-51e436f0d555"
-                }
-            },
-        }
+        "from_attributes": True,
+        "json_schema_extra": {
+            "example": {
+                "vin_number": "WAUZZZ4M901234567",
+                "reg_number": "А000АА00",
+                "brand": "AUDI",
+                "model": "Q7",
+                "year": 2015,
+                "engine_volume": 3.0,
+                "color": "Красный",
+                "owner_id": "47f43c2d-a4d1-436d-b52b-51e436f0d555",
+            }
+        },
+    }
 
 
 class CarResponseSchema(CarBaseSchema):
     id: str
-    
+
     # Вместо owner_id отдаем целый объект владельца!
     owner: Optional["UserMinResponseSchema"] = None
 
@@ -101,6 +111,7 @@ class CarResponseSchema(CarBaseSchema):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
 
 class CarByUserResponseSchema(CarBaseSchema):
     id: str

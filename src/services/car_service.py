@@ -7,7 +7,7 @@ from src.models.ownership import UserCarOwnership
 
 from src.repositories.car_repo import CarRepository
 
-from src.schemas.cars import CarBaseSchema, CarCreateSchema, CarResponseSchema
+from src.schemas.cars import CarCreateSchema, CarResponseSchema
 from src.schemas.users import UserMinResponseSchema
 
 
@@ -18,6 +18,7 @@ class CarService:
     async def add_new_car_with_owner(self, data: CarCreateSchema) -> CarResponseSchema:
         # проверяем уникальность vin
         non_unique_vin = await self.repo.get_car_by_vin(data.vin_number)
+
         if non_unique_vin:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -26,7 +27,9 @@ class CarService:
 
         # выделить id пользователя и перевести данные схемы в чистый словарь
         car_data = data.model_dump()
-        owner_id = car_data.pop("owner_id")  # извлечь owner_id, т.к. в таблице cars его нет
+        owner_id = car_data.pop(
+            "owner_id"
+        )  # извлечь owner_id, т.к. в таблице cars его нет
 
         # отправить данные в репозиторий
         new_car = await self.repo.create_car(car_data, owner_id)
@@ -56,7 +59,9 @@ class CarService:
 
         return cars_count
 
-    async def get_car_by_id_with_owners(self, car_id: str) -> Optional[CarResponseSchema]:
+    async def get_car_by_id_with_owners(
+        self, car_id: str
+    ) -> Optional[CarResponseSchema]:
         car = await self.repo.get_car_by_id_with_owners(car_id)
 
         if not car:
@@ -64,7 +69,9 @@ class CarService:
 
         return CarResponseSchema.model_validate(car)
 
-    async def get_car_by_vin_with_owners(self, vin_number: str) -> Optional[CarResponseSchema]:
+    async def get_car_by_vin_with_owners(
+        self, vin_number: str
+    ) -> Optional[CarResponseSchema]:
         car = await self.repo.get_car_by_vin_with_owners(vin_number)
 
         if not car:
@@ -81,5 +88,6 @@ class CarService:
             raise HTTPException(status_code=404, detail="Автомобиль не найден")
 
         return CarResponseSchema.model_validate(car)
+
 
 CarResponseSchema.model_rebuild()

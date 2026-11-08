@@ -4,7 +4,12 @@ from typing import List, Optional
 
 from src.models.users import UserModel
 from src.repositories.user_repo import UserRepository
-from src.schemas.users import UserCreateSchema, UserChangeRoleSchema, UserResponseSchema, UserWithCarsResponseSchema
+from src.schemas.users import (
+    UserCreateSchema,
+    UserChangeRoleSchema,
+    UserResponseSchema,
+    UserWithCarsResponseSchema,
+)
 from src.schemas.cars import CarByUserResponseSchema
 from src.auth.security import hash_password
 
@@ -40,11 +45,13 @@ class UserService:
         user = await self.repo.change_role_user(user_id, data)
         return UserResponseSchema.model_validate(user)
 
-    async def get_user_by_id_with_cars(self, user_id: str) -> Optional[UserWithCarsResponseSchema]:
+    async def get_user_by_id_with_cars(
+        self, user_id: str
+    ) -> Optional[UserWithCarsResponseSchema]:
         result = await self.repo.get_user_by_id_with_cars(user_id)
 
         if not result:
-            raise HTTPException(status_code=404, detail="Пользователь не найден") 
+            raise HTTPException(status_code=404, detail="Пользователь не найден")
 
         return UserWithCarsResponseSchema.model_validate(result)
 
@@ -90,4 +97,3 @@ class UserService:
 
 
 UserWithCarsResponseSchema.model_rebuild()
-

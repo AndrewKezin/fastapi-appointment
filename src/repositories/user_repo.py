@@ -1,6 +1,7 @@
 from typing import List, Optional
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
+
+from sqlalchemy import select, desc
+from sqlalchemy.orm import selectinload, contains_eager
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.models.ownership import UserCarOwnership
@@ -13,37 +14,32 @@ class UserRepository(BaseRepository):
         super().__init__(session)
 
     async def create_user(self, data: dict) -> UserModel:
-        """
-        Создаёт пользователя и возвращает ORM-модель.
-        Конвертацию в UserResponseSchema делает сервис или API.
-        """
         user = UserModel(**data)
         self.session.add(user)
         await self.session.commit()
         await self.session.refresh(user)
+
         return user
-
-    # async def change_role_user(self, user_id: str, data: UserChangeRoleSchema) -> Optional[UserModel]:
-    #     user = await self.session.execute(select(UserModel).where(UserModel.id == user_id)).scalar_one_or_none()
-    #     user.role = data.role
-    #     await self.session.commit()
-    #     return user
-
-    async def get_user_by_id(self, user_id: str) -> Optional[UserModel]:
-        return await super().get_by_id(UserModel, user_id)
 
     async def get_user_by_id_with_cars(self, user_id: str) -> Optional[UserModel]:
         query = (
             select(UserModel)
+            # Делаем явный JOIN с промежуточной таблицей, чтобы её поля стали доступны для ORDER BY
+            .join(UserModel.ownerships)
             .where(UserModel.id == user_id)
+            # Теперь сортировка по этой таблице сработает
+            .order_by(desc(UserCarOwnership.ownership_start))
             .options(
-                selectinload(UserModel.ownerships)
+                # Не делать отдельный запрос для ownerships, а «впитать» (eager load) данные из уже сделанного выше JOIN'а
+                contains_eager(UserModel.ownerships)
+                # А для самих машин внутри связи используем selectinload
                 .selectinload(UserCarOwnership.car)
             )
         )
         result = await self.session.execute(query)
-
-        return result.scalar_one_or_none()
+        # Так как при JOIN строк может быть несколько (по одной на каждую машину),
+        # используем unique(), чтобы SQLAlchemy корректно собрала одного уникального юзера
+        return result.unique().scalar_one_or_none()
 
     async def get_user_by_email(self, email: str) -> Optional[UserModel]:
         result = await self.session.execute(
@@ -78,4 +74,5 @@ class UserRepository(BaseRepository):
         user.phone = "PHONE DELETED"
         await self.session.commit()
         await self.session.refresh(user)
+
         return user

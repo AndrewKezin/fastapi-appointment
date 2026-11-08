@@ -33,6 +33,21 @@ class UserCreateSchema(UserBaseSchema):
         ..., min_length=5, max_length=100, description="Пароль минимум 5 символов"
     )
 
+    model_config = {
+        "from_attributes": True,
+        "json_schema_extra": {
+            "example": {
+                "email": "test@testmail.com",
+                "first_name": "Иван",
+                "middle_name": "Иванович",
+                "last_name": "Иванов",
+                "phone": "9991234567",
+                "address": "г.Подольск, ул.Маркса, д.500, кв.500",
+                "password": "testpass123",
+            }
+        },
+    }
+
 
 class UserChangeRoleSchema(UserBaseSchema):
     role: UserRoleEnum = UserRoleEnum.USER
@@ -56,8 +71,9 @@ class UserMinResponseSchema(BaseModel):
     last_name: str
 
     model_config = {
-        "from_attributes": True  # Чтобы схема умела читать объекты SQLAlchemy
+        "from_attributes": True,  # Чтобы схема умела читать объекты SQLAlchemy
     }
+
 
 class UserWithCarsResponseSchema(UserResponseSchema):
     cars: List["CarByUserResponseSchema"] = None

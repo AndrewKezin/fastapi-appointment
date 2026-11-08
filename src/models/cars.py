@@ -43,21 +43,18 @@ class CarModel(Base):
     ownerships: Mapped[List["UserCarOwnership"]] = relationship(
         back_populates="car",
         cascade="all, delete-orphan",
-        lazy="raise"  # Вызовет понятное исключение, если связь не подгружена заранее
+        lazy="raise",  # Вызовет понятное исключение, если связь не подгружена заранее
     )
 
     # обратная связь к appointments
     appointments: Mapped[List["AppointmentModel"]] = relationship(
-        back_populates="car", 
-        cascade="all, delete-orphan",
-        lazy="raise"
+        back_populates="car", cascade="all, delete-orphan", lazy="raise"
     )
 
     # удобный прямой доступ к пользователям
     @property
     def users(self) -> List["UserModel"]:
         return [own.user for own in self.ownerships]
-
 
     @property
     def owner(self) -> Optional["UserModel"]:
