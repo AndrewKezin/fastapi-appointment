@@ -215,11 +215,13 @@ def create_test_user() -> dict:
 
 
 def create_test_car() -> dict:
+    car_brand_model = generate_brand_model()
+
     return {
         "vin_number": generate_vin(),
         "reg_number": generate_reg_number(),
-        "brand": generate_brand_model()["brand"],
-        "model": generate_brand_model()["model"],
+        "brand": car_brand_model["brand"],
+        "model": car_brand_model["model"],
         "year": generate_year(),
         "engine_volume": generate_engine_volume(),
         "color": generate_color(),

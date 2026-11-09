@@ -41,25 +41,41 @@ class UserRepository(BaseRepository):
         # используем unique(), чтобы SQLAlchemy корректно собрала одного уникального юзера
         return result.unique().scalar_one_or_none()
 
-    async def get_user_by_email(self, email: str) -> Optional[UserModel]:
-        result = await self.session.execute(
-            select(UserModel).where(UserModel.email == email)
+    async def get_user_by_query_params(
+        self,
+        email: str | None,
+        first_name: str | None,
+        middle_name: str | None,
+        last_name: str | None,
+        phone: str | None,
+        address: str | None,
+        limit: int,
+        offset: int,
+    ) -> List[UserModel]:
+        stmt = select(UserModel).options(
+            selectinload(UserModel.ownerships).selectinload(UserCarOwnership.car)
         )
-        return result.scalar_one_or_none()
 
-    async def get_users_by_last_name(self, last_name: str) -> List[UserModel]:
-        # Создаем шаблон вида '%иванов%'
-        search_pattern = f"%{last_name}%"
+        # ИСПРАВИТЬ ПРОБЛЕМУ ПОИСКА ФИО С ПЕРВОЙ БУКВЫ!!!
+        if email:
+            stmt = stmt.where(UserModel.email.ilike(f"%{email}%"))
+        if first_name:
+            stmt = stmt.where(UserModel.first_name.ilike(f"%{first_name}%"))
+        if middle_name:
+            stmt = stmt.where(UserModel.middle_name.ilike(f"%{middle_name}%"))
+        if last_name:
+            stmt = stmt.where(UserModel.last_name.ilike(f"%{last_name}%"))
+        if phone:
+            stmt = stmt.where(UserModel.phone.ilike(f"%{phone}%"))
+        if address:
+            stmt = stmt.where(UserModel.address.ilike(f"%{address}%"))
 
-        stmt = select(UserModel).where(
-            UserModel.last_name.ilike(search_pattern)
-        )  # ilike - не чувствителен к регистру
+        # пагинация
+        stmt = stmt.limit(limit).offset(offset)
+
         result = await self.session.execute(stmt)
 
-        return list(result.scalars().all())
-
-    async def get_count_users(self) -> int:
-        return await super().count(UserModel)
+        return list(result.unique().scalars().all())
 
     async def soft_delete_user(self, user_id: str) -> Optional[UserModel]:
         result: UserModel = await self.session.execute(

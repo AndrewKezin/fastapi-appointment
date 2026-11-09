@@ -54,9 +54,6 @@ class CarRepository(BaseRepository):
             return None  # Сигнализируем сервису, что транзакция упала
 
     async def get_all_cars_with_owners(self) -> List[CarModel]:
-        # 1. Загружаем CarModel
-        # 2. Через selectinload подгружаем список CarModel.ownerships
-        # 3. Через chained selectinload подгружаем UserCarOwnership.user для каждой записи
         query = (
             select(CarModel)
             .options(
@@ -90,34 +87,38 @@ class CarRepository(BaseRepository):
 
         return result.scalar_one_or_none()
 
-    # для поиска авто по vin с выдачей информации клиенту
-    async def get_car_by_vin_with_owners(self, vin_number: str) -> Optional[CarModel]:
+    async def get_car_by_query_params(
+        self,
+        vin_number: str | None,
+        reg_number: str | None,
+        brand: str | None,
+        model: str | None,
+        limit: int,
+        offset: int,
+    ) -> List[CarModel]:
         stmt = (
             select(CarModel)
-            .join(CarModel.ownerships)
-            .where(CarModel.vin_number == vin_number.upper())
-            .order_by(desc(UserCarOwnership.ownership_start))
             .options(
-                contains_eager(CarModel.ownerships).selectinload(UserCarOwnership.user)
+                selectinload(CarModel.ownerships).selectinload(UserCarOwnership.user)
             )
+            .order_by(desc(CarModel.updated_at))
         )
-        result = await self.session.execute(stmt)
 
-        return result.unique().scalar_one_or_none()
+        if vin_number:
+            stmt = stmt.where(CarModel.vin_number.ilike(f"%{vin_number}%"))
 
-    async def get_car_by_reg_number_with_owners(
-        self, reg_number: str
-    ) -> Optional[CarModel]:
-        stmt = (
-            select(CarModel)
-            .join(CarModel.ownerships)
-            .where(CarModel.reg_number == reg_number.upper())
-            .order_by(desc(UserCarOwnership.ownership_start))
-            .options(
-                contains_eager(CarModel.ownerships).selectinload(UserCarOwnership.user)
-            )
-        )
+        if reg_number:
+            stmt = stmt.where(CarModel.reg_number.ilike(f"%{reg_number}%"))
+
+        if brand:
+            stmt = stmt.where(CarModel.brand.ilike(f"%{brand}%"))
+
+        if model:
+            stmt = stmt.where(CarModel.model.ilike(f"%{model}%"))
+
+        # пагинация
+        stmt = stmt.limit(limit).offset(offset)
 
         result = await self.session.execute(stmt)
 
-        return result.unique().scalar_one_or_none()
+        return list(result.unique().scalars().all())

@@ -120,3 +120,37 @@ class CarByUserResponseSchema(CarBaseSchema):
     updated_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class CarSearchQueryParams(BaseModel):
+    vin_number: Optional[str] = Field(
+        None,
+        min_length=7,
+        max_length=17,
+        description="Поиск по полному VIN (минимум 7 символов)",
+    )
+    reg_number: Optional[str] = Field(
+        None,
+        min_length=3,
+        max_length=10,
+        description="Поиск по госномеру (минимум 3 цифры)",
+    )
+    brand: Optional[str] = Field(
+        None, min_length=2, max_length=50, description="Фильтр по марке"
+    )
+    model: Optional[str] = Field(
+        None, min_length=2, max_length=50, description="Фильтр по модели"
+    )
+
+    # пагинация
+    limit: int = Field(
+        10, ge=1, le=100, description="Количество записей на страницу (макс. 100)"
+    )
+    offset: int = Field(
+        0, ge=0, description="Количество пропускаемых записей (смещение)"
+    )
+
+    @field_validator("vin_number", "reg_number", "brand", "model")
+    @classmethod
+    def uppercase_search_fields(cls, value: Optional[str]) -> Optional[str]:
+        return value.upper() if value else None

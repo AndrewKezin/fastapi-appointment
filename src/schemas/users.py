@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import re
 from typing import List, Optional, TYPE_CHECKING
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from enum import Enum
 
 if TYPE_CHECKING:
@@ -81,3 +82,48 @@ class UserWithCarsResponseSchema(UserResponseSchema):
     model_config = {
         "from_attributes": True  # Чтобы схема умела читать объекты SQLAlchemy
     }
+
+
+class UserSearchQueryParams(BaseModel):
+    email: Optional[str] = Field(
+        None, min_length=2, max_length=50, description="Минимум 2 символа из email"
+    )
+    first_name: Optional[str] = Field(
+        None, min_length=2, max_length=50, description="Минимум 2 буквы имени"
+    )
+    middle_name: Optional[str] = Field(
+        None, min_length=2, max_length=50, description="Минимум 2 буквы отчества"
+    )
+    last_name: Optional[str] = Field(
+        None, min_length=2, max_length=50, description="Минимум 2 буквы фамилии"
+    )
+    phone: Optional[str] = Field(
+        None, min_length=3, max_length=15, description="Минимум 3 цифры номера телефона"
+    )
+    address: Optional[str] = Field(
+        None,
+        min_length=3,
+        max_length=50,
+        description="Минимум 3 буквы или цифры адреса",
+    )
+
+    # пагинация
+    limit: int = Field(
+        10, ge=1, le=100, description="Количество записей на страницу (макс. 100)"
+    )
+    offset: int = Field(
+        0, ge=0, description="Количество пропускаемых записей (смещение)"
+    )
+
+    @field_validator("email", "first_name", "middle_name", "last_name", "address")
+    @classmethod
+    def lowercase_search_method(cls, value: Optional[str]) -> Optional[str]:
+        return value.lower() if value else None
+
+    @field_validator("phone")
+    @classmethod
+    def clean_phone_number(cls, value: Optional[str]) -> Optional[str]:
+        if not value:
+            return None
+        else:
+            return re.sub(r"\D", "", value)
