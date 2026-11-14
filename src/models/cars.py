@@ -3,7 +3,7 @@ from typing import List, Optional, TYPE_CHECKING
 from uuid import uuid4
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import CheckConstraint, Float, String, Integer
+from sqlalchemy import CheckConstraint, DateTime, Float, String, Integer
 
 from src.database import Base
 from src.models.helpers import utcnow
@@ -23,17 +23,19 @@ class CarModel(Base):
         primary_key=True,
     )
     vin_number: Mapped[str] = mapped_column(String(17), unique=True, nullable=False)
-    reg_number: Mapped[str] = mapped_column(String(8))
+    reg_number: Mapped[str] = mapped_column(String(10))
     brand: Mapped[str] = mapped_column(String(50))
     model: Mapped[str] = mapped_column(String(50))
     year: Mapped[int | None] = mapped_column(Integer, default=None)
     engine_volume: Mapped[float | None] = mapped_column(Float, default=None)
     color: Mapped[str | None] = mapped_column(String(30), default=None)
     created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
         default=utcnow,
         nullable=False,
     )
     updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
         default=utcnow,
         onupdate=utcnow,  # при обновлении строки будет вызван utcnow()
         nullable=False,
@@ -54,18 +56,19 @@ class CarModel(Base):
     # удобный прямой доступ к пользователям
     @property
     def users(self) -> List["UserModel"]:
-        return [own.user for own in self.ownerships]
+        return [own.user for own in self.ownerships if own.ownership_end is None]
 
     @property
     def owner(self) -> Optional["UserModel"]:
-        # Проходим по записям владения в поисках основной
-        for ownership in self.ownerships:
+        active_ownerships = [
+            own for own in self.ownerships if own.ownership_end is None
+        ]
+        for ownership in active_ownerships:
             if ownership.is_primary:
-                return ownership.user  # Возвращаем связанный объект UserModel
+                return ownership.user
 
-        # Если основного нет, берем первого владельца из списка
-        if self.ownerships:
-            return self.ownerships[0].user
+        if active_ownerships:
+            return active_ownerships[0].user
 
         return None
 

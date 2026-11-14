@@ -89,13 +89,13 @@ class UserSearchQueryParams(BaseModel):
         None, min_length=2, max_length=50, description="Минимум 2 символа из email"
     )
     first_name: Optional[str] = Field(
-        None, min_length=2, max_length=50, description="Минимум 2 буквы имени"
+        None, min_length=2, max_length=50, description="Минимум 2 первых буквы имени"
     )
     middle_name: Optional[str] = Field(
-        None, min_length=2, max_length=50, description="Минимум 2 буквы отчества"
+        None, min_length=2, max_length=50, description="Минимум 2 первых буквы отчества"
     )
     last_name: Optional[str] = Field(
-        None, min_length=2, max_length=50, description="Минимум 2 буквы фамилии"
+        None, min_length=2, max_length=50, description="Минимум 2 первых буквы фамилии"
     )
     phone: Optional[str] = Field(
         None, min_length=3, max_length=15, description="Минимум 3 цифры номера телефона"
@@ -118,7 +118,7 @@ class UserSearchQueryParams(BaseModel):
     @field_validator("email", "first_name", "middle_name", "last_name", "address")
     @classmethod
     def lowercase_search_method(cls, value: Optional[str]) -> Optional[str]:
-        return value.lower() if value else None
+        return value.capitalize() if value else None
 
     @field_validator("phone")
     @classmethod
@@ -127,3 +127,15 @@ class UserSearchQueryParams(BaseModel):
             return None
         else:
             return re.sub(r"\D", "", value)
+
+
+class UserUpdateSchema(BaseModel):
+    email: Optional[EmailStr] = Field(None, description="Новый email пользователя")
+    password: Optional[str] = Field(
+        None, min_length=6, max_length=100, description="Новый пароль"
+    )
+    first_name: Optional[str] = Field(None, min_length=2, max_length=50)
+    middle_name: Optional[str] = Field(None, min_length=2, max_length=50)
+    last_name: Optional[str] = Field(None, min_length=2, max_length=50)
+    phone: Optional[str] = Field(None, min_length=10, max_length=15)
+    address: Optional[str] = Field(None, min_length=5, max_length=200)

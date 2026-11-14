@@ -1,5 +1,5 @@
 from typing import TYPE_CHECKING
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -27,14 +27,22 @@ class UserCarOwnership(Base):
     __tablename__ = "user_car_ownership"
 
     __table_args__ = (
-        # Уникальность пары юзер-машина
-        UniqueConstraint("user_id", "car_id", name="uq_user_car"),
-        # Только один основной владелец у машины (для SQLite используем 1 вместо True)
+        # 1. Один пользователь может иметь только ОДНУ активную запись владения для конкретной машины
         Index(
-            "uq_primary_car_owner",
+            "uq_active_user_car",
+            "user_id",
             "car_id",
             unique=True,
-            sqlite_where=text("is_primary = 1"),
+            sqlite_where=text("ownership_end IS NULL"),
+            postgresql_where=text("ownership_end IS NULL"),
+        ),
+        # 2. У машины может быть только ОДИН активный основной владелец в текущий момент времени
+        Index(
+            "uq_active_primary_car_owner",
+            "car_id",
+            unique=True,
+            sqlite_where=text("is_primary = 1 AND ownership_end IS NULL"),
+            postgresql_where=text("is_primary = true AND ownership_end IS NULL"),
         ),
     )
 
@@ -50,10 +58,10 @@ class UserCarOwnership(Base):
     )
 
     ownership_start: Mapped[datetime] = mapped_column(
-        DateTime, default=utcnow, nullable=False
+        DateTime(timezone=True), default=utcnow, nullable=False
     )  # начало владения
     ownership_end: Mapped[datetime | None] = mapped_column(
-        DateTime, default=None, nullable=True
+        DateTime(timezone=True), default=None, nullable=True
     )  # окончание владения
 
     is_primary: Mapped[bool] = mapped_column(

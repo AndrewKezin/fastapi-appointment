@@ -11,7 +11,6 @@ from src.database import Base
 from src.config import settings
 import src.models
 
-
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
@@ -33,7 +32,10 @@ target_metadata = Base.metadata
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 
-config.set_main_option("sqlalchemy.url", settings.database_url)  #  ссылка на БД из config.py
+config.set_main_option(
+    "sqlalchemy.url", settings.database_url
+)  #  ссылка на БД из config.py
+
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -53,6 +55,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        render_as_batch=True, # для поддержки в sqlite ALTER COLUMN
     )
 
     with context.begin_transaction():
@@ -80,15 +83,21 @@ def run_migrations_offline() -> None:
 #         with context.begin_transaction():
 #             context.run_migrations()
 
+
 def do_run_migrations(connection):
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        render_as_batch=True, # для поддержки в sqlite ALTER COLUMN 
+    )
 
     with context.begin_transaction():
         context.run_migrations()
 
+
 async def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
-    
+
     # Создаем асинхронный движок из конфигурации alembic.ini
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),

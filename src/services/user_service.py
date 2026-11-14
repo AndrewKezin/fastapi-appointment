@@ -1,10 +1,10 @@
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List
+from typing import List, Optional
 
 from src.models.users import UserModel
 from src.repositories.user_repo import UserRepository
-from src.schemas.users import UserCreateSchema
+from src.schemas.users import UserCreateSchema, UserUpdateSchema
 
 from src.auth.security import hash_password
 
@@ -43,7 +43,9 @@ class UserService:
         result = await self.repo.get_user_by_id_with_cars(user_id)
 
         if not result:
-            raise HTTPException(status_code=404, detail="Пользователь не найден")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден"
+            )
 
         return result
 
@@ -80,13 +82,49 @@ class UserService:
         return users
 
     async def soft_delete_user(self, user_id: str) -> UserModel:
-        user = await self.repo.get_user_by_id_with_cars(user_id)
+        user = await self.repo.get_by_id(UserModel, user_id)
         if not user:
-            raise HTTPException(status_code=404, detail="Пользователь не найден")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден"
+            )
 
         if not user.is_active:
-            raise HTTPException(status_code=400, detail="Пользователь уже удалён")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Пользователь уже удалён",
+            )
 
         result = await self.repo.soft_delete_user(user_id)
 
         return result
+
+    async def update_user(self, user_id: str, data: UserUpdateSchema) -> UserModel:
+        # Проверка на существование юзера
+        user: Optional[UserModel] = await self.repo.get_by_id(UserModel, user_id)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Пользователь не найден"
+            )
+
+        # Берем ТОЛЬКО те поля, которые клиент явно передал в запросе
+        update_data = data.model_dump(exclude_unset=True)
+
+        if not update_data:
+            return user
+
+        # Проверка нового email на уникальность, если он изменился
+        if "email" in update_data and update_data["email"] != user.email:
+            existing_user = await self.repo.get_user_by_email(update_data["email"])
+            if existing_user:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Email {update_data['email']} уже занят другим пользователем",
+                )
+
+        # Обработка смены пароля
+        if "password" in update_data:
+            raw_password = update_data.pop("password")
+            if raw_password is not None:
+                update_data["hashed_password"] = hash_password(raw_password)
+
+        return await self.repo.update_user(user, update_data)

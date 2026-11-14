@@ -2,22 +2,73 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from typing import Optional, TYPE_CHECKING
+from typing import Annotated, Any, List, Optional, TYPE_CHECKING
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AfterValidator, BaseModel, Field, field_validator
 
-if TYPE_CHECKING:
-    from src.schemas.users import UserMinResponseSchema
+from src.schemas.users import UserMinResponseSchema, UserResponseSchema
+
+# if TYPE_CHECKING:
+#     from src.schemas.users import UserMinResponseSchema, UserResponseSchema
+
+
+TRANSLIT_MAP = {
+    "A": "А",
+    "B": "В",
+    "E": "Е",
+    "K": "К",
+    "M": "М",
+    "H": "Н",
+    "O": "О",
+    "P": "Р",
+    "C": "С",
+    "T": "Т",
+    "Y": "У",
+    "X": "Х",
+}
+
+
+# Валидатор для автоматического перевода VIN в верхний регистр
+def uppercase_vin(value: Any) -> Any:
+    if isinstance(value, str):
+        return value.strip().upper()
+    return value
+
+
+# Валидатор для автоматического перевода госномера в верхний регистр и перевода случайных латинских букв в кириллицу
+def validate_and_fix_reg_number(value: Any) -> Any:
+    if value is None:
+        return None
+
+    if not isinstance(value, str):
+        raise ValueError("Госномер должен быть строкой")
+
+    uppercased_value = value.strip().upper()
+
+    fixed_reg_number = "".join(
+        TRANSLIT_MAP.get(char, char) for char in uppercased_value
+    )
+
+    if not re.match(r"^[АВЕКМНОРСТУХ0-9]+$", fixed_reg_number):
+        raise ValueError(
+            "Госномер содержит недопустимые символы. Разрешены только цифры и буквы: А, В, Е, К, М, Н, О, Р, С, Т, У, Х."
+        )
+    return fixed_reg_number
+
+
+# Создаем переиспользуемые типы с привязанными валидаторами
+VinStr = Annotated[str, AfterValidator(uppercase_vin)]
+RegNumberStr = Annotated[str, AfterValidator(validate_and_fix_reg_number)]
 
 
 class CarBaseSchema(BaseModel):
-    vin_number: str = Field(
+    vin_number: VinStr = Field(
         ...,
         min_length=17,
         max_length=17,
         description="Уникальный VIN-номер автомобиля (17 символов)",
     )
-    reg_number: str = Field(
+    reg_number: RegNumberStr = Field(
         ..., min_length=6, max_length=10, description="Регистрационный номер (госномер)"
     )
     brand: str = Field(..., min_length=2, max_length=50, description="Марка автомобиля")
@@ -29,49 +80,6 @@ class CarBaseSchema(BaseModel):
         None, gt=0.0, lt=8.0, description="Объем двигателя в литрах (например, 2.0)"
     )
     color: Optional[str] = Field(None, max_length=30, description="Цвет автомобиля")
-
-    # Валидатор для автоматического перевода VIN в верхний регистр
-    @field_validator("vin_number")
-    @classmethod
-    def uppercase_vin(cls, value: str) -> str:
-        return value.upper()
-
-    # Валидатор для автоматического перевода госномера в верхний регистр и перевода случайных латинских букв в кириллицу
-    @field_validator("reg_number")
-    @classmethod
-    def validate_and_fix_reg_number(cls, value: str) -> str:
-        value = value.upper()
-
-        translit_map = {
-            "A": "А",
-            "B": "В",
-            "E": "Е",
-            "K": "К",
-            "M": "М",
-            "H": "Н",
-            "O": "О",
-            "P": "Р",
-            "C": "С",
-            "T": "Т",
-            "Y": "У",
-            "X": "Х",
-        }
-
-        fixed_chars = []
-
-        for char in value:
-            if char in translit_map:
-                fixed_chars.append(translit_map[char])
-            else:
-                fixed_chars.append(char)
-
-        fixed_reg_number = "".join(fixed_chars)
-
-        if not re.match(r"^[АВЕКМНОРСТУХ0-9]+$", fixed_reg_number):
-            raise ValueError(
-                "Госномер содержит недопустимые символы. Разрешены только цифры и буквы: А, В, Е, К, М, Н, О, Р, С, Т, У, Х."
-            )
-        return fixed_reg_number
 
     model_config = {
         "from_attributes": True  # Чтобы схема умела читать объекты SQLAlchemy
@@ -106,6 +114,7 @@ class CarResponseSchema(CarBaseSchema):
 
     # Вместо owner_id отдаем целый объект владельца!
     owner: Optional["UserMinResponseSchema"] = None
+    users: List["UserResponseSchema"] = []
 
     created_at: datetime
     updated_at: datetime
@@ -154,3 +163,39 @@ class CarSearchQueryParams(BaseModel):
     @classmethod
     def uppercase_search_fields(cls, value: Optional[str]) -> Optional[str]:
         return value.upper() if value else None
+
+
+class CarUpdateSchema(BaseModel):
+    vin_number: Optional[VinStr] = Field(
+        None,
+        min_length=17,
+        max_length=17,
+        description="Уникальный VIN-номер автомобиля (17 символов)",
+    )
+    reg_number: Optional[RegNumberStr] = Field(
+        None,
+        min_length=6,
+        max_length=10,
+        description="Регистрационный номер (госномер)",
+    )
+    brand: Optional[str] = Field(
+        None, min_length=2, max_length=50, description="Марка автомобиля"
+    )
+    model: Optional[str] = Field(None, max_length=50, description="Модель автомобиля")
+    year: Optional[int] = Field(
+        None, ge=1950, le=datetime.now().year + 1, description="Год выпуска автомобиля"
+    )
+    engine_volume: Optional[float] = Field(
+        None, gt=0.0, lt=8.0, description="Объем двигателя в литрах (например, 2.0)"
+    )
+    color: Optional[str] = Field(None, max_length=30, description="Цвет автомобиля")
+
+    owner_id: Optional[str] = Field(None, description="ID пользователя")
+    is_primary_owner: bool = Field(
+        False,
+        description="True — сделать основным владельцем, False — добавить как дополнительного",
+    )
+
+    model_config = {
+        "from_attributes": True  # Чтобы схема умела читать объекты SQLAlchemy
+    }

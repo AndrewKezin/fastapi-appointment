@@ -4,7 +4,12 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_session
-from src.schemas.cars import CarCreateSchema, CarResponseSchema, CarSearchQueryParams
+from src.schemas.cars import (
+    CarCreateSchema,
+    CarResponseSchema,
+    CarSearchQueryParams,
+    CarUpdateSchema,
+)
 from src.services.car_service import CarService
 from src.schemas.users import UserMinResponseSchema
 
@@ -64,6 +69,20 @@ async def get_car_by_id_with_owners(
 ):
     service = CarService(session)
     car = await service.get_car_by_id_with_owners(car_id)
+    return car
+
+
+@router.patch(
+    "/{car_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=CarResponseSchema,
+    summary="Обновление данных об автомобиле или сменить/добавить владельца",
+)
+async def update_car(
+    car_id: str, data: CarUpdateSchema, session: AsyncSession = Depends(get_session)
+):
+    service = CarService(session)
+    car = await service.update_car(car_id=car_id, data=data)
     return car
 
 

@@ -10,6 +10,7 @@ from src.schemas.users import (
     UserResponseSchema,
     UserWithCarsResponseSchema,
     UserSearchQueryParams,
+    UserUpdateSchema,
 )
 from src.schemas.cars import CarByUserResponseSchema
 from src.services.user_service import UserService
@@ -33,6 +34,7 @@ async def create_user(
     "/", status_code=status.HTTP_200_OK, response_model=List[UserResponseSchema]
 )
 async def get_all_users(session: AsyncSession = Depends(get_session)):
+
     service = UserService(session)
     users = await service.get_all_users()
 
@@ -85,6 +87,17 @@ async def get_user_by_id_with_cars(
     return user
 
 
+@router.patch(
+    "/{user_id}", status_code=status.HTTP_200_OK, response_model=UserResponseSchema
+)
+async def update_user(
+    user_id: str, data: UserUpdateSchema, session: AsyncSession = Depends(get_session)
+):
+    service = UserService(session)
+
+    return await service.update_user(user_id=user_id, data=data)
+
+
 @router.delete(
     "/{user_id}", summary="Удаление данных о пользователе (id и хеш пароля сохраняются)"
 )
@@ -96,3 +109,4 @@ async def soft_delete_user(user_id: str, session: AsyncSession = Depends(get_ses
 
 
 UserWithCarsResponseSchema.model_rebuild()
+

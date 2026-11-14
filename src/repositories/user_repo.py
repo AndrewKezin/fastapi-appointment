@@ -56,7 +56,6 @@ class UserRepository(BaseRepository):
             selectinload(UserModel.ownerships).selectinload(UserCarOwnership.car)
         )
 
-        # ИСПРАВИТЬ ПРОБЛЕМУ ПОИСКА ФИО С ПЕРВОЙ БУКВЫ!!!
         if email:
             stmt = stmt.where(UserModel.email.ilike(f"%{email}%"))
         if first_name:
@@ -88,6 +87,24 @@ class UserRepository(BaseRepository):
         user.last_name = "DELETED"
         user.address = "ADDRESS DELETED"
         user.phone = "PHONE DELETED"
+        await self.session.commit()
+        await self.session.refresh(user)
+
+        return user
+
+    async def get_user_by_email(self, email) -> Optional[UserModel]:
+        result = await self.session.execute(
+            select(UserModel).where(UserModel.email == email)
+        )
+
+        return result.scalar_one_or_none()
+
+    async def update_user(
+        self, user: UserModel, update_data: dict[str, str]
+    ) -> UserModel:
+        for key, value in update_data.items():
+            setattr(user, key, value)
+
         await self.session.commit()
         await self.session.refresh(user)
 
