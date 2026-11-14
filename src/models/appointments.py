@@ -3,7 +3,7 @@ from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import Integer, String, Enum as SQLEnum, ForeignKey
+from sqlalchemy import Integer, String, Enum as SQLEnum, ForeignKey, DateTime
 
 from src.database import Base
 from src.schemas.appointments import AppointmentStatusEnum
@@ -20,16 +20,20 @@ class AppointmentModel(Base):
     id: Mapped[str] = mapped_column(
         String(36), default=lambda: str(uuid4()), primary_key=True
     )
-    scheduled_at: Mapped[datetime] = mapped_column(nullable=False)
+    scheduled_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
     duration_minutes: Mapped[int | None] = mapped_column(Integer, default=None)
     status: Mapped[AppointmentStatusEnum] = mapped_column(
         SQLEnum(AppointmentStatusEnum),
         default=AppointmentStatusEnum.PENDING,
     )
     notes: Mapped[str] = mapped_column(String(500), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(default=utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, nullable=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        default=utcnow, nullable=False, onupdate=utcnow
+        DateTime(timezone=True), default=utcnow, nullable=False, onupdate=utcnow
     )
 
     # связь с машиной (одна машина -> много записей)

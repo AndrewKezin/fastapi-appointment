@@ -1,15 +1,18 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
+from pydantic import BaseModel, Field, field_validator
 
-from pydantic import BaseModel, Field
+from src.models.helpers import utcnow
+from src.schemas.cars import CarByUserResponseSchema
 
 
 class AppointmentStatusEnum(Enum):
-    PENDING = "pending"
-    CONFIRMED = "confirmed"
-    COMPLETED = "completed"
-    CANCELLED = "cancelled"
+    PENDING = "Ожидается подтверждение записи"
+    CONFIRMED = "Запись подтверждена"
+    IN_PROGRESS = "Производятся работы по автомобилю"
+    COMPLETED = "Работы выполнены"
+    CANCELLED = "Запись отменена"
 
 
 class AppointmentBaseSchema(BaseModel):
@@ -20,17 +23,41 @@ class AppointmentBaseSchema(BaseModel):
     notes: str = Field(
         ..., min_length=5, max_length=500, description="Предполагаемые работы"
     )
+
+    # Проверить, что время записи не находится в прошлом
+    @field_validator("scheduled_at")
+    @classmethod
+    def check_future_date(cls, value: datetime) -> datetime:
+        now = utcnow()
+        # Если дата от клиента пришла без часового пояса, то добавить его. Иначе упадет при сравнении
+        val_utc = value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+        if val_utc < now:
+            raise ValueError("Некорректное время записи")
+        return val_utc
+
+
+class AppointmentCreateSchema(AppointmentBaseSchema):
     car_id: str = Field(..., description="ID автомобиля из базы данных")
 
 
-class AppointmentChangeStatusSchema(AppointmentBaseSchema):
-    status: AppointmentStatusEnum = Field(..., description="Статус записи")
+class AppointmentUpdateSchema(BaseModel):
+    scheduled_at: Optional[datetime] = Field(
+        None, description="Новая дата и время записи"
+    )
+    duration_minutes: Optional[int] = Field(None, ge=0)
+    status: Optional[AppointmentStatusEnum] = Field(None, description="Статус заявки")
+    notes: Optional[str] = Field(None, max_length=500)
 
 
-class AppointmentResponseSchema(AppointmentChangeStatusSchema):
+class AppointmentResponseSchema(BaseModel):
     id: str
+    car_id: str
+    scheduled_at: datetime
+    duration_minutes: Optional[int]
+    status: AppointmentStatusEnum
+    notes: str
     created_at: datetime
     updated_at: datetime
+    car: Optional[CarByUserResponseSchema] = None
 
-    class Config:
-        from_attributes = True
+    model_config = {"from_attributes": True}
