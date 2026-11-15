@@ -72,10 +72,12 @@ class AppointmentRepository(BaseRepository):
             for field, value in update_data.items():
                 setattr(appointment, field, value)
 
+            appointment_id = appointment.id # сохранить id до commit() и expire_all()
+
             await self.session.commit()
             # сбросить кэш, чтобы при следующий запрос прочитал чистое и актуальное состояние объекта со всеми связями
             self.session.expire_all()
-            return await self.session.get_app_by_id(appointment.id)
+            return await self.get_app_by_id(appointment_id)
         except Exception as e:
             await self.session.rollback()
             print("Error updating appointment:", e)
