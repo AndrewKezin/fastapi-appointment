@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,6 +8,7 @@ from src.database import get_session
 from src.schemas.appointments import (
     AppointmentResponseSchema,
     AppointmentCreateSchema,
+    AppointmentSearchQueryParams,
     AppointmentStatusEnum,
     AppointmentUpdateSchema,
 )
@@ -41,30 +42,18 @@ async def create_appointment(
     • Body (или Pydantic-схема) — берет данные из JSON-тела запроса.
 
 """
+
+
 @router.get(
     "/",
     response_model=List[AppointmentResponseSchema],
     summary="Получить список записей с фильтрацией",
 )
 async def get_appointments(
-    car_id: Optional[str] = Query(None, description="Фильтр по ID автомобиля"),
-    status_filter: Optional[AppointmentStatusEnum] = Query(
-        None, alias="status", description="Фильтр по статусу"
-    ),
-    date_from: Optional[datetime] = Query(None, description="Начало периода"),
-    date_to: Optional[datetime] = Query(None, description="Конец периода"),
-    limit: int = Query(20, ge=1, le=100),
-    offset: int = Query(0, ge=0),
+    filters: Annotated[AppointmentSearchQueryParams, Query()],
     service: AppointmentService = Depends(get_appointment_service),
 ):
-    return await service.get_appointments(
-        car_id=car_id,
-        status_filter=status_filter,
-        date_from=date_from,
-        date_to=date_to,
-        limit=limit,
-        offset=offset,
-    )
+    return await service.get_appointments(filters)
 
 
 @router.get(

@@ -16,7 +16,12 @@ from src.schemas.users import UserMinResponseSchema
 router = APIRouter(prefix="/cars", tags=["Cars"])
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED, response_model=CarResponseSchema)
+@router.post(
+    "/",
+    status_code=status.HTTP_201_CREATED,
+    response_model=CarResponseSchema,
+    summary="Создать автомобиль с владельцем",
+)
 async def add_car_with_owner(
     data: CarCreateSchema, session: AsyncSession = Depends(get_session)
 ):
@@ -25,14 +30,20 @@ async def add_car_with_owner(
     return new_car
 
 
-@router.get("/", status_code=status.HTTP_200_OK, response_model=List[CarResponseSchema])
-async def get_all_cars_with_owners(session: AsyncSession = Depends(get_session)):
-    service = CarService(session)
-    cars_with_owners = await service.get_all_cars_with_owners()
-    return cars_with_owners
+# роут не актуален, т.к. его заменяет роут search_cars
+# @router.get("/", status_code=status.HTTP_200_OK, response_model=List[CarResponseSchema], summary="Получить список автомобилей с владельцами")
+# async def get_all_cars_with_owners(session: AsyncSession = Depends(get_session)):
+#     service = CarService(session)
+#     cars_with_owners = await service.get_all_cars_with_owners()
+#     return cars_with_owners
 
 
-@router.get("/count", status_code=status.HTTP_200_OK, response_model=dict[str, int])
+@router.get(
+    "/count",
+    status_code=status.HTTP_200_OK,
+    response_model=dict[str, int],
+    summary="Получить общее количество автомобилей в БД",
+)
 async def get_count_cars(session: AsyncSession = Depends(get_session)):
     service = CarService(session)
     car_count = await service.get_count_cars()
@@ -40,7 +51,10 @@ async def get_count_cars(session: AsyncSession = Depends(get_session)):
 
 
 @router.get(
-    "/search", status_code=status.HTTP_200_OK, response_model=List[CarResponseSchema]
+    "/",
+    status_code=status.HTTP_200_OK,
+    response_model=List[CarResponseSchema],
+    summary="Получить список автомобилей с фильтрацией",
 )
 async def search_cars(
     params: CarSearchQueryParams = Depends(),
@@ -62,7 +76,10 @@ async def search_cars(
 
 # ДИНАМИЧЕСКЕ РОУТЫ В САМОМ НИЗУ, ИНАЧЕ ОНИ БУДУТ ПЕРЕХВАТЫВАТЬ СТАТИЧЕСКИЕ, РАСПОЛОЖЕННЫЕ НИЖЕ
 @router.get(
-    "/{car_id}", status_code=status.HTTP_200_OK, response_model=CarResponseSchema
+    "/{car_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=CarResponseSchema,
+    summary="Получить автомобиль по ID с владельцем",
 )
 async def get_car_by_id_with_owners(
     car_id: str, session: AsyncSession = Depends(get_session)

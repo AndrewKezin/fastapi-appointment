@@ -8,6 +8,7 @@ from src.repositories.appointment_repo import AppointmentRepository
 from src.repositories.car_repo import CarRepository
 from src.schemas.appointments import (
     AppointmentCreateSchema,
+    AppointmentSearchQueryParams,
     AppointmentUpdateSchema,
     AppointmentStatusEnum,
 )
@@ -49,22 +50,9 @@ class AppointmentService:
         return appointment
 
     async def get_appointments(
-        self,
-        car_id: Optional[str] = None,
-        status_filter: Optional[AppointmentStatusEnum] = None,
-        date_from: Optional[datetime] = None,
-        date_to: Optional[datetime] = None,
-        limit: int = 20,
-        offset: int = 0,
+        self, filters: AppointmentSearchQueryParams
     ) -> List[AppointmentModel]:
-        result = await self.repo.get_app_list(
-            car_id=car_id,
-            status=status_filter,
-            date_from=date_from,
-            date_to=date_to,
-            limit=limit,
-            offset=offset,
-        )
+        result = await self.repo.get_app_list(filters)
 
         return result
 

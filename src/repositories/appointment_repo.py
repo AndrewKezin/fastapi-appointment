@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload
 
 from src.models.appointments import AppointmentModel
 from src.repositories.base_repo import BaseRepository
-from src.schemas.appointments import AppointmentStatusEnum
+from src.schemas.appointments import AppointmentStatusEnum, AppointmentSearchQueryParams
 
 
 class AppointmentRepository(BaseRepository):
@@ -38,13 +38,7 @@ class AppointmentRepository(BaseRepository):
         return result.scalar_one_or_none()
 
     async def get_app_list(
-        self,
-        car_id: Optional[str] = None,
-        status: Optional[AppointmentStatusEnum] = None,
-        date_from: Optional[datetime] = None,
-        date_to: Optional[datetime] = None,
-        limit: int = 20,
-        offset: int = 0,
+        self, filters: AppointmentSearchQueryParams
     ) -> List[AppointmentModel]:
         stmt = (
             select(AppointmentModel)
@@ -52,16 +46,16 @@ class AppointmentRepository(BaseRepository):
             .order_by(desc(AppointmentModel.scheduled_at))
         )
 
-        if car_id:
-            stmt = stmt.where(AppointmentModel.car_id == car_id)
-        if status:
-            stmt = stmt.where(AppointmentModel.status == status)
-        if date_from:
-            stmt = stmt.where(AppointmentModel.scheduled_at >= date_from)
-        if date_to:
-            stmt = stmt.where(AppointmentModel.scheduled_at <= date_to)
+        if filters.car_id:
+            stmt = stmt.where(AppointmentModel.car_id == filters.car_id)
+        if filters.status:
+            stmt = stmt.where(AppointmentModel.status == filters.status)
+        if filters.date_from:
+            stmt = stmt.where(AppointmentModel.scheduled_at >= filters.date_from)
+        if filters.date_to:
+            stmt = stmt.where(AppointmentModel.scheduled_at <= filters.date_to)
 
-        stmt = stmt.limit(limit).offset(offset)
+        stmt = stmt.limit(filters.limit).offset(filters.offset)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -72,7 +66,7 @@ class AppointmentRepository(BaseRepository):
             for field, value in update_data.items():
                 setattr(appointment, field, value)
 
-            appointment_id = appointment.id # сохранить id до commit() и expire_all()
+            appointment_id = appointment.id  # сохранить id до commit() и expire_all()
 
             await self.session.commit()
             # сбросить кэш, чтобы при следующий запрос прочитал чистое и актуальное состояние объекта со всеми связями

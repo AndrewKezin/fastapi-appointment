@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from src.models.helpers import utcnow
 from src.schemas.cars import CarByUserResponseSchema
@@ -61,3 +61,26 @@ class AppointmentResponseSchema(BaseModel):
     car: Optional[CarByUserResponseSchema] = None
 
     model_config = {"from_attributes": True}
+
+
+class AppointmentSearchQueryParams(BaseModel):
+    car_id: Optional[str] = Field(None, description="Фильтр по ID автомобиля")
+    status: Optional[AppointmentStatusEnum] = Field(
+        None, description="Фильтр по статусу"
+    )
+    date_from: Optional[datetime] = Field(None, description="Начало периода")
+    date_to: Optional[datetime] = Field(None, description="Конец периода")
+
+    # Пагинация
+    limit: int = Field(
+        20, ge=1, le=100, description="Количество записей на страницу (макс. 100)"
+    )
+    offset: int = Field(
+        0, ge=0, description="Количество пропускаемых записей (смещение)"
+    )
+
+    @model_validator(mode="after")
+    def check_date_range(self) -> "AppointmentSearchQueryParams":
+        if self.date_from and self.date_to and self.date_from > self.date_to:
+            raise ValueError("Дата начала периода (date_from) не может быть позже даты окончания (date_to)")
+        return self
