@@ -19,7 +19,10 @@ router = APIRouter(prefix="/users", tags=["Users"])
 
 
 @router.post(
-    "/", status_code=status.HTTP_201_CREATED, response_model=UserResponseSchema
+    "/",
+    status_code=status.HTTP_201_CREATED,
+    response_model=UserResponseSchema,
+    summary="Добавление нового пользователя",
 )
 async def create_user(
     data: UserCreateSchema, session: AsyncSession = Depends(get_session)
@@ -30,19 +33,28 @@ async def create_user(
     return user
 
 
-@router.get(
-    "/", status_code=status.HTTP_200_OK, response_model=List[UserResponseSchema]
-)
-async def get_all_users(session: AsyncSession = Depends(get_session)):
+# Не используется, т.к. роут get_all_users заменяет роут search_users
+# @router.get(
+#     "/",
+#     status_code=status.HTTP_200_OK,
+#     response_model=List[UserResponseSchema],
+#     summary="Получить список пользователей",
+# )
+# async def get_all_users(session: AsyncSession = Depends(get_session)):
 
-    service = UserService(session)
-    users = await service.get_all_users()
+#     service = UserService(session)
+#     users = await service.get_all_users()
 
-    return users
+#     return users
 
 
 # Статические пути всегда должны идти до динамических путей с переменными!
-@router.get("/count")
+@router.get(
+    "/count",
+    status_code=status.HTTP_200_OK,
+    response_model=dict[str, int],
+    summary="Получить общее количество пользователей в БД",
+)
 async def get_count_users(session: AsyncSession = Depends(get_session)):
     service = UserService(session)
     count = await service.get_count_users()
@@ -51,7 +63,10 @@ async def get_count_users(session: AsyncSession = Depends(get_session)):
 
 
 @router.get(
-    "/search", status_code=status.HTTP_200_OK, response_model=List[UserResponseSchema]
+    "/search",
+    status_code=status.HTTP_200_OK,
+    response_model=List[UserResponseSchema],
+    summary="Получить список пользователей с фильтрацией",
 )
 async def search_users(
     params: UserSearchQueryParams = Depends(),
@@ -77,6 +92,7 @@ async def search_users(
     "/{user_id}",
     status_code=status.HTTP_200_OK,
     response_model=UserWithCarsResponseSchema,
+    summary="Получить пользователя по ID",
 )
 async def get_user_by_id_with_cars(
     user_id: str, session: AsyncSession = Depends(get_session)
@@ -88,7 +104,10 @@ async def get_user_by_id_with_cars(
 
 
 @router.patch(
-    "/{user_id}", status_code=status.HTTP_200_OK, response_model=UserResponseSchema
+    "/{user_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=UserResponseSchema,
+    summary="Обновление данных о пользователе",
 )
 async def update_user(
     user_id: str, data: UserUpdateSchema, session: AsyncSession = Depends(get_session)
@@ -99,7 +118,10 @@ async def update_user(
 
 
 @router.delete(
-    "/{user_id}", summary="Удаление данных о пользователе (id и хеш пароля сохраняются)"
+    "/{user_id}",
+    status_code=status.HTTP_200_OK,
+    response_model=UserResponseSchema,
+    summary="Удаление персональных данных о пользователе (id, хеш пароля и привязка к автомобилям сохраняются)",
 )
 async def soft_delete_user(user_id: str, session: AsyncSession = Depends(get_session)):
     service = UserService(session)
@@ -109,4 +131,3 @@ async def soft_delete_user(user_id: str, session: AsyncSession = Depends(get_ses
 
 
 UserWithCarsResponseSchema.model_rebuild()
-
