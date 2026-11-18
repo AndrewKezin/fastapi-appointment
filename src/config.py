@@ -1,7 +1,14 @@
+from pydantic import BaseModel
 from pydantic_settings import BaseSettings
 from pathlib import Path  # работа с путями в ОС
 
-# BASE_DIR = Path(__file__).parent # родительская директория от текущего раположения файла
+BASE_DIR = Path(__file__).parent.parent # родительская директория от текущего раположения файла
+
+class AuthJWT(BaseModel):
+    private_key_path: Path = BASE_DIR / "certs" / "jwt-private.pem"
+    public_key_path: Path = BASE_DIR / "certs" / "jwt-public.pem"
+    algorithm: str = "RS256"
+    access_token_expire_minutes: int = 15
 
 
 class Settings(BaseSettings):
@@ -12,6 +19,10 @@ class Settings(BaseSettings):
 
     static_dir: str = "static"
     images_dir: str = "static/images"
+
+    auth_jwt: AuthJWT = AuthJWT()
+
+    
 
     class Config:
         env_file = ".env"

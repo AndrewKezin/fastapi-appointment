@@ -67,3 +67,7 @@ coverage/
 
 # Локальная база данных
 service.db
+
+# Сертификаты
+certs/
+*.pem
