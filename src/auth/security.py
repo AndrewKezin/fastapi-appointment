@@ -9,8 +9,10 @@ def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8") # в моей БД пароль - String(255)
 
 
-def check_password(password: str, hashed_password: str) -> bool:
-    return bcrypt.checkpw(password.encode("utf-8"), hashed_password.encode("utf-8"))
+def check_password(password: str, hashed_password: str | bytes) -> bool:
+    if isinstance (hashed_password, str):
+        hashed_password = hashed_password.encode("utf-8")
+    return bcrypt.checkpw(password.encode("utf-8"), hashed_password)
 
 
 # добавить JWT
