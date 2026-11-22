@@ -7,18 +7,82 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.database import get_session
 from src.models.users import UserModel
-from src.auth.security import check_password, decode_token
+from src.schemas.users import UserRoleEnum
+from src.auth.security import (
+    check_password,
+    decode_token,
+    TOKEN_TYPE_FIELD,
+    ACCESS_TOKEN_TYPE,
+    REFRESH_TOKEN_TYPE,
+)
 
 # tokenUrl должен совпадать с полным путем до эндпоинта логина
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
-# Проверяем email и пароль при входе (через стандартную форму OAuth2PasswordRequestForm, чтобы работала кнопка Authorize в Swagger).
+async def _get_user_by_token_type(
+    token: str,
+    expected_token_type: str,
+    session: AsyncSession,
+) -> UserModel:
+    creds_exceptions = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Невалидный токен авторизации",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = decode_token(token)
+        token_type = payload.get(TOKEN_TYPE_FIELD)
+        if token_type != expected_token_type:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Неверный тип токена: ожидался '{expected_token_type}'",
+            )
+
+        user_id: str | None = payload.get("sub")
+        if user_id is None:
+            raise creds_exceptions
+
+    except jwt.InvalidTokenError as e:
+        print(f"Ошибка проверки JWT: {type(e).__name__} — {e}")
+        raise creds_exceptions
+
+    stmt = select(UserModel).where(UserModel.id == user_id)
+    result = await session.execute(stmt)
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        raise creds_exceptions
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Аккаунт пользователя заблокирован",
+        )
+
+    return user
+
+
+# Зависимость для обычных защищенных эндпоинтов (проверяет ACCESS токен)
+async def get_current_active_user(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> UserModel:
+    return await _get_user_by_token_type(token, ACCESS_TOKEN_TYPE, session)
+
+
+# Зависимость специально для эндпоинта обновления токена (проверяет REFRESH токен)
+async def get_current_user_for_refresh(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> UserModel:
+    return await _get_user_by_token_type(token, REFRESH_TOKEN_TYPE, session)
+
+
 async def validate_auth_user(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> UserModel:
-    # В OAuth2PasswordRequestForm поле логина всегда называется username, передаем туда email
+    # В стандартной форме OAuth2 логин всегда передается в поле username — ищем по нему email
     stmt = select(UserModel).where(UserModel.email == form_data.username)
     result = await session.execute(stmt)
     user = result.scalar_one_or_none()
@@ -29,52 +93,30 @@ async def validate_auth_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    if not user or not check_password(form_data.password, user.hashed_password):
+    if user is None or not check_password(form_data.password, user.hashed_password):
         raise unauthed_exc
 
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Аккаунт пользователя деактивирован",
+            detail="Пользователь деактивирован",
         )
 
     return user
 
-async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
-    session: Annotated[AsyncSession, Depends(get_session)],
-) -> UserModel:
-    creds_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Невалидный токен авторизации",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    # Достаем токен из заголовка и проверяем его публичным ключом
-    try:
-        payload = decode_token(token)
-        user_id: str | None = payload.get("sub")
-        if user_id is None:
-            raise creds_exception
-    except jwt.InvalidTokenError:
-        raise creds_exception
 
-    # Находим пользователя в БД
-    stmt = select(UserModel).where(UserModel.id == user_id)
-    result = await session.execute(stmt)
-    user = result.scalar_one_or_none()
+# Класс-фабрика для проверки ролей
+class RoleChecker:
+    def __init__(self, allowed_roles: list[UserRoleEnum]):
+        self.allowed_roles = allowed_roles
 
-    if user is None:
-        raise creds_exception
-
-    return user
-
-# Проверяем, что пользователь активен (не заблокирован)
-async def get_current_active_user(
-    current_user: Annotated[UserModel, Depends(get_session)]
-) -> UserModel:
-    if not current_user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Аккаунт пользователя деактивирован",
-        )
-    return current_user
+    def __call__(
+        self,
+        user: Annotated[UserModel, Depends(get_current_active_user)],
+    ) -> UserModel:
+        if user.role not in self.allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Недостаточно прав для выполнения этого действия",
+            )
+        return user
