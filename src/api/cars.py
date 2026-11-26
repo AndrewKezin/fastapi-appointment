@@ -1,9 +1,8 @@
-from typing import List
+from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database import get_session
 from src.schemas.cars import (
     CarCreateSchema,
     CarResponseSchema,
@@ -12,6 +11,12 @@ from src.schemas.cars import (
 )
 from src.services.car_service import CarService
 from src.schemas.users import UserMinResponseSchema
+from src.api.dependencies import (
+    CurrentUser,
+    SessionDep,
+    allow_management,
+    check_car_owner_or_manager,
+)
 
 router = APIRouter(prefix="/cars", tags=["Cars"])
 
@@ -22,20 +27,10 @@ router = APIRouter(prefix="/cars", tags=["Cars"])
     response_model=CarResponseSchema,
     summary="Создать автомобиль с владельцем",
 )
-async def add_car_with_owner(
-    data: CarCreateSchema, session: AsyncSession = Depends(get_session)
-):
+async def add_car_with_owner(data: CarCreateSchema, session: SessionDep):
     service = CarService(session)
     new_car = await service.add_new_car_with_owner(data)
     return new_car
-
-
-# роут не актуален, т.к. его заменяет роут search_cars
-# @router.get("/", status_code=status.HTTP_200_OK, response_model=List[CarResponseSchema], summary="Получить список автомобилей с владельцами")
-# async def get_all_cars_with_owners(session: AsyncSession = Depends(get_session)):
-#     service = CarService(session)
-#     cars_with_owners = await service.get_all_cars_with_owners()
-#     return cars_with_owners
 
 
 @router.get(
@@ -43,8 +38,9 @@ async def add_car_with_owner(
     status_code=status.HTTP_200_OK,
     response_model=dict[str, int],
     summary="Получить общее количество автомобилей в БД",
+    dependencies=[Depends(allow_management)],
 )
-async def get_count_cars(session: AsyncSession = Depends(get_session)):
+async def get_count_cars(session: SessionDep):
     service = CarService(session)
     car_count = await service.get_count_cars()
     return {"count": car_count}
@@ -55,10 +51,11 @@ async def get_count_cars(session: AsyncSession = Depends(get_session)):
     status_code=status.HTTP_200_OK,
     response_model=List[CarResponseSchema],
     summary="Получить список автомобилей с фильтрацией",
+    dependencies=[Depends(allow_management)],
 )
 async def search_cars(
+    session: SessionDep,
     params: CarSearchQueryParams = Depends(),
-    session: AsyncSession = Depends(get_session),
 ):
     service = CarService(session)
 
@@ -82,10 +79,14 @@ async def search_cars(
     summary="Получить автомобиль по ID с владельцем",
 )
 async def get_car_by_id_with_owners(
-    car_id: str, session: AsyncSession = Depends(get_session)
+    car_id: str,
+    current_user: CurrentUser,
+    session: SessionDep,
 ):
     service = CarService(session)
     car = await service.get_car_by_id_with_owners(car_id)
+    # Если запрос отправляет не владелец авто или не менеджер, то выбросит ошибку
+    check_car_owner_or_manager(car, current_user)
     return car
 
 
@@ -96,10 +97,11 @@ async def get_car_by_id_with_owners(
     summary="Обновление данных об автомобиле или сменить/добавить владельца",
 )
 async def update_car(
-    car_id: str, data: CarUpdateSchema, session: AsyncSession = Depends(get_session)
+    car_id: str, data: CarUpdateSchema, current_user: CurrentUser, session: SessionDep
 ):
     service = CarService(session)
     car = await service.update_car(car_id=car_id, data=data)
+    check_car_owner_or_manager(car, current_user)
     return car
 
 

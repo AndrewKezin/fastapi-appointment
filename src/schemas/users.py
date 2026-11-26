@@ -14,6 +14,8 @@ if TYPE_CHECKING:
 class UserRoleEnum(Enum):
     USER = "user"
     ADMIN = "admin"
+    MANAGER = "manager"
+    MECHANIC = "mechanic"
 
 
 class UserBaseSchema(BaseModel):

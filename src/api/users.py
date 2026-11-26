@@ -2,10 +2,7 @@ from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, status
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from src.auth.deps import get_current_active_user
-from src.database import get_session
 from src.models.users import UserModel
 from src.schemas.users import (
     UserCreateSchema,
@@ -17,7 +14,12 @@ from src.schemas.users import (
 )
 from src.schemas.cars import CarByUserResponseSchema
 from src.services.user_service import UserService
-from src.api.dependencies import allow_admin_only, check_owner_or_admin, forbidden_exc
+from src.api.dependencies import (
+    allow_management,
+    check_owner_or_admin,
+    forbidden_exc,
+    SessionDep,
+)
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -28,28 +30,10 @@ router = APIRouter(prefix="/users", tags=["Users"])
     response_model=UserResponseSchema,
     summary="Добавление нового пользователя",
 )
-async def create_user(
-    data: UserCreateSchema, session: AsyncSession = Depends(get_session)
-):
+async def create_user(data: UserCreateSchema, session: SessionDep):
     service = UserService(session)
     user = await service.create_user(data)
-
     return user
-
-
-# Не используется, т.к. роут get_all_users заменяет роут search_users
-# @router.get(
-#     "/",
-#     status_code=status.HTTP_200_OK,
-#     response_model=List[UserResponseSchema],
-#     summary="Получить список пользователей",
-# )
-# async def get_all_users(session: AsyncSession = Depends(get_session)):
-
-#     service = UserService(session)
-#     users = await service.get_all_users()
-
-#     return users
 
 
 @router.get(
@@ -57,12 +41,11 @@ async def create_user(
     status_code=status.HTTP_200_OK,
     response_model=dict[str, int],
     summary="Получить общее количество пользователей в БД",
-    dependencies=[Depends(allow_admin_only)],  # Только для админа
+    dependencies=[Depends(allow_management)],  # Только для админа
 )
-async def get_count_users(session: AsyncSession = Depends(get_session)):
+async def get_count_users(session: SessionDep):
     service = UserService(session)
     count = await service.get_count_users()
-
     return {"count": count}
 
 
@@ -71,11 +54,11 @@ async def get_count_users(session: AsyncSession = Depends(get_session)):
     status_code=status.HTTP_200_OK,
     response_model=List[UserResponseSchema],
     summary="Получить список пользователей с фильтрацией",
-    dependencies=[Depends(allow_admin_only)],
+    dependencies=[Depends(allow_management)],
 )
 async def search_users(
+    session: SessionDep,
     params: UserSearchQueryParams = Depends(),
-    session: AsyncSession = Depends(get_session),
 ):
     service = UserService(session)
 
@@ -89,7 +72,6 @@ async def search_users(
         limit=params.limit,
         offset=params.offset,
     )
-
     return users
 
 
@@ -102,15 +84,16 @@ async def search_users(
 )
 async def get_user_by_id_with_cars(
     user_id: str,
-    current_user: Annotated[UserModel, Depends(get_current_active_user)],
-    session: AsyncSession = Depends(get_session),
+    current_user: Annotated[
+        UserModel, Depends(get_current_active_user)
+    ],  # достает sub из jwt-токена и находит в БД юзера, отправляющего запрос
+    session: SessionDep,
 ):
     # Роут доступен самому пользователю и админу. Если проверка не пройдет, то выкинет ошибку.
     check_owner_or_admin(user_id, current_user)
 
     service = UserService(session)
     user = await service.get_user_by_id_with_cars(user_id)
-
     return user
 
 
@@ -124,7 +107,7 @@ async def update_user(
     user_id: str,
     data: UserUpdateSchema,
     current_user: Annotated[UserModel, Depends(get_current_active_user)],
-    session: AsyncSession = Depends(get_session),
+    session: SessionDep,
 ):
     check_owner_or_admin(user_id, current_user)  # только пользователь и админ
 
@@ -137,7 +120,6 @@ async def update_user(
             raise forbidden_exc
 
     service = UserService(session)
-
     return await service.update_user(user_id=user_id, data=data)
 
 
@@ -150,13 +132,12 @@ async def update_user(
 async def soft_delete_user(
     user_id: str,
     current_user: Annotated[UserModel, Depends(get_current_active_user)],
-    session: AsyncSession = Depends(get_session),
+    session: SessionDep,
 ):
     check_owner_or_admin(user_id, current_user)  # только пользователь и админ
 
     service = UserService(session)
     user = await service.soft_delete_user(user_id)
-
     return user
 
 
