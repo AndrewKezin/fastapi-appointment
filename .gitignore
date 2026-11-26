@@ -68,6 +68,9 @@ coverage/
 # Локальная база данных
 service.db
 
+# Посев БД
+src/seed/
+
 # Сертификаты
 certs/
 *.pem

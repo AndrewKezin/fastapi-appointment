@@ -9,7 +9,7 @@ from src.auth.deps import (
     get_current_active_user,
     get_current_user_for_refresh,
 )
-from src.schemas.users import UserProfileResponse, UserResponseSchema
+from src.schemas.users import UserResponseSchema
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 

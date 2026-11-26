@@ -25,7 +25,7 @@ class UserRepository(BaseRepository):
         query = (
             select(UserModel)
             # Делаем явный JOIN с промежуточной таблицей, чтобы её поля стали доступны для ORDER BY
-            .join(UserModel.ownerships)
+            .outerjoin(UserModel.ownerships)
             .where(UserModel.id == user_id)
             # Теперь сортировка по этой таблице сработает
             .order_by(desc(UserCarOwnership.ownership_start))

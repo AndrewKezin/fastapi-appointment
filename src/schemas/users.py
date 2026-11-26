@@ -139,15 +139,3 @@ class UserUpdateSchema(BaseModel):
     last_name: Optional[str] = Field(None, min_length=2, max_length=50)
     phone: Optional[str] = Field(None, min_length=10, max_length=15)
     address: Optional[str] = Field(None, min_length=5, max_length=200)
-
-
-class UserProfileResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: str
-    email: str
-    first_name: str
-    last_name: str
-    phone: str
-    role: UserRoleEnum
-    is_active: bool

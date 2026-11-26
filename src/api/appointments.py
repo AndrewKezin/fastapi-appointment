@@ -9,7 +9,6 @@ from src.schemas.appointments import (
     AppointmentResponseSchema,
     AppointmentCreateSchema,
     AppointmentSearchQueryParams,
-    AppointmentStatusEnum,
     AppointmentUpdateSchema,
 )
 from src.services.appointment_service import AppointmentService
