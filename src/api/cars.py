@@ -1,7 +1,6 @@
-from typing import Annotated, List
+from typing import List
 
 from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.schemas.cars import (
     CarCreateSchema,

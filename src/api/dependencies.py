@@ -46,9 +46,9 @@ allow_mechanics = RoleChecker(
 )
 
 
-def check_owner_or_admin(user_id: str, current_user: UserModel) -> None:
+def check_owner_or_managers(user_id: str, current_user: UserModel) -> None:
     """Проверяет, что запрос делает сам владелец аккаунта или админ"""
-    if current_user.id != user_id and current_user.role != UserRoleEnum.ADMIN:
+    if current_user.id != user_id and current_user.role in allow_management.allowed_roles:
         raise forbidden_exc
 
 def check_car_owner_or_manager(car: CarModel, current_user: UserModel) -> None:
@@ -56,4 +56,11 @@ def check_car_owner_or_manager(car: CarModel, current_user: UserModel) -> None:
     is_manager = current_user.role in allow_management.allowed_roles
     is_owner = any(own.user_id == current_user.id for own in car.ownerships)
     if not is_owner and not is_manager:
+        raise forbidden_exc
+
+def check_car_owner_or_staff(car: CarModel, current_user: UserModel) -> None:
+    """Проверяет, что запрос об авто делает сам владелец или персонал техцентра"""
+    is_staff = current_user.role in allow_staff.allowed_roles
+    is_owner = any(own.user_id == current_user.id for own in car.ownerships)
+    if not is_staff and not is_owner:
         raise forbidden_exc

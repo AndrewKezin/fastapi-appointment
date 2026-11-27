@@ -16,7 +16,7 @@ from src.schemas.cars import CarByUserResponseSchema
 from src.services.user_service import UserService
 from src.api.dependencies import (
     allow_management,
-    check_owner_or_admin,
+    check_owner_or_managers,
     forbidden_exc,
     SessionDep,
 )
@@ -90,7 +90,7 @@ async def get_user_by_id_with_cars(
     session: SessionDep,
 ):
     # Роут доступен самому пользователю и админу. Если проверка не пройдет, то выкинет ошибку.
-    check_owner_or_admin(user_id, current_user)
+    check_owner_or_managers(user_id, current_user)
 
     service = UserService(session)
     user = await service.get_user_by_id_with_cars(user_id)
@@ -109,7 +109,7 @@ async def update_user(
     current_user: Annotated[UserModel, Depends(get_current_active_user)],
     session: SessionDep,
 ):
-    check_owner_or_admin(user_id, current_user)  # только пользователь и админ
+    check_owner_or_managers(user_id, current_user)  # только пользователь и менеджеры
 
     # Защита от привелегий: обычный пользователь не может менять свою роль или статус активности
     if current_user.role != UserRoleEnum.ADMIN:
@@ -134,7 +134,7 @@ async def soft_delete_user(
     current_user: Annotated[UserModel, Depends(get_current_active_user)],
     session: SessionDep,
 ):
-    check_owner_or_admin(user_id, current_user)  # только пользователь и админ
+    check_owner_or_managers(user_id, current_user)  # только пользователь и менеджеры
 
     service = UserService(session)
     user = await service.soft_delete_user(user_id)

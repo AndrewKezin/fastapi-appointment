@@ -1,10 +1,13 @@
-from datetime import datetime
-from typing import Annotated, List, Optional
+from typing import Annotated, List
 
 from fastapi import APIRouter, Depends, Query, status
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database import get_session
+from src.api.dependencies import (
+    CurrentUser,
+    SessionDep,
+    allow_staff,
+    allow_management,
+)
 from src.schemas.appointments import (
     AppointmentResponseSchema,
     AppointmentCreateSchema,
@@ -17,7 +20,7 @@ router = APIRouter(prefix="/appointments", tags=["Appointments"])
 
 
 def get_appointment_service(
-    session: AsyncSession = Depends(get_session),
+    session: SessionDep,
 ) -> AppointmentService:
     return AppointmentService(session)
 
@@ -30,9 +33,11 @@ def get_appointment_service(
 )
 async def create_appointment(
     data: AppointmentCreateSchema,
+    current_user: CurrentUser,
     service: AppointmentService = Depends(get_appointment_service),
 ):
-    return await service.create_appointment(data)
+    # Проверка прав доступа производится в сервисе после загрузки данных об авто из БД
+    return await service.create_appointment(data, current_user)
 
 
 """
@@ -47,6 +52,7 @@ async def create_appointment(
     "/",
     response_model=List[AppointmentResponseSchema],
     summary="Получить список записей с фильтрацией",
+    dependencies=[Depends(allow_staff)],  # доступ только персоналу
 )
 async def get_appointments(
     filters: Annotated[AppointmentSearchQueryParams, Query()],
@@ -62,9 +68,10 @@ async def get_appointments(
 )
 async def get_appointment(
     appointment_id: str,
+    current_user: CurrentUser,
     service: AppointmentService = Depends(get_appointment_service),
 ):
-    return await service.get_appointments_by_id(appointment_id)
+    return await service.get_appointments_by_id(appointment_id, current_user)
 
 
 @router.patch(
@@ -75,9 +82,10 @@ async def get_appointment(
 async def update_appointment(
     appointment_id: str,
     data: AppointmentUpdateSchema,
+    current_user: CurrentUser,
     service: AppointmentService = Depends(get_appointment_service),
 ):
-    return await service.update_appointment(appointment_id, data)
+    return await service.update_appointment(appointment_id, data, current_user)
 
 
 @router.post(
@@ -87,6 +95,7 @@ async def update_appointment(
 )
 async def cancel_appointment(
     appointment_id: str,
+    current_user: CurrentUser,
     service: AppointmentService = Depends(get_appointment_service),
 ):
-    return await service.cancel_appointment(appointment_id)
+    return await service.cancel_appointment(appointment_id, current_user)
